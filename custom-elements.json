@@ -1,0 +1,26 @@
+{
+  "version": 2,
+  "tags": [
+    {
+      "name": "e-receta",
+      "description": "Receta electrónica según NewtriLabs",
+      "properties": [
+        {
+          "name": "title",
+          "type": "String",
+          "description": "eReceta",
+          "default": "Receta electrónica según NewtriLabs"
+        },
+        {
+          "name": "page",
+          "type": "String",
+          "description": "Página a mostrar",
+          "default": "main"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "cssProperties": []
+    }
+  ]
+}
