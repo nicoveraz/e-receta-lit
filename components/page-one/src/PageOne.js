@@ -55,6 +55,18 @@ export class PageOne extends LitElement {
         min-height: 260px;
         max-width: 95vw;
       }
+      .imagen {
+        height: 36px;
+        width: 129px;
+        vertical-align: bottom;
+        margin-bottom: 5px;
+        display: inline-block;
+        background-color: rgba(0,0,0,.035);
+      }
+      .imagen > img {
+        width:129px;
+        height:36px;
+      }
     `;
   }
 
@@ -80,6 +92,12 @@ export class PageOne extends LitElement {
       },
       _serieValida: {
         type: Boolean
+      },
+      _captcha: {
+        type: String
+      },
+      _txtCaptcha: {
+        type: String
       }
     };
   }
@@ -92,7 +110,13 @@ export class PageOne extends LitElement {
     this._firma = false;
     this._rutDoc = '';
     this._rutValido = false;
-    this._numSerie = '';
+    this._numSerie = 'A021426944';
+    this._captcha = '';
+    this._txtCaptcha = '';
+    const ref = firebase.firestore().collection('MEDICOS').doc('test').onSnapshot(r => {
+      console.log(r.data());
+      this._captcha = r.data().captcha;
+    });
   }
 
   render() {
@@ -109,6 +133,13 @@ export class PageOne extends LitElement {
           <vaadin-text-field clear-button-visible id="rutDoc" error-message="Rut inválido" label="RUT" ?disabled=${!this._emailValido} .value="${this._rutDoc}" @input="${(e) => {e.target.value = `${e.target.value === '-'? e.target.value.replace('-', '') : e.target.value.split('').pop() != '-'? e.target.value.replace('-','').slice(0, -1) + '-' + e.target.value.slice(-1): e.target.value.replace('-','')}`; this._rutDoc = e.target.value; console.log(this._rutDoc); this._validaRut(e.target.value)}}"></vaadin-text-field>      
           <vaadin-text-field label="Número de Serie" .value="${this._numSerie}" ?disabled=${!this._rutValido} @input="${e => this._numSerie = e.target.value}"></vaadin-text-field>      
           <vaadin-button ?disabled="${!this._rutDoc || !this._numSerie}" @click="${(e) => this._validaMed(this._rutDoc)}" theme="primary">Validar</vaadin-button><br>   
+          <div>
+            <div class="imagen">
+              <img ?hidden=${!this._captcha} src="data:image/png;base64,${this._captcha}">
+            </div>
+            <vaadin-text-field label="Texto Captcha" .value="${this._txtCaptcha}" @input="${e => this._txtCaptcha = e.target.value}" ?disabled=${!this._captcha}></vaadin-text-field>       
+            <vaadin-button theme="primary" ?disabled=${!this._captcha} @click="${() => this._enviaCaptcha(this._txtCaptcha)}">Enviar</vaadin-button>            
+          </div>
           <vaadin-text-field label="Estado CI" readonly .value="${this._serieValida}" ?disabled=${!this._emailValido}></vaadin-text-field>       
           <vaadin-text-field label="Registro Superintendencia" .value="${this._medValido}" readonly ?disabled=${!this._emailValido}></vaadin-text-field>       
           <h5 style="color: ${this._medValido? 'black':'rgba(0,0,0,.3)'}">Paso 3: Llave Pública y Privada</h5>
@@ -128,6 +159,11 @@ export class PageOne extends LitElement {
       </div>   
     <div>
     `;
+  }
+  _enviaCaptcha(t){
+    const ref = firebase.firestore().collection('MEDICOS').doc('test');
+    ref.set({txtCaptcha: t, captcha: null},{merge: true})
+    .then(r => this._txtCaptcha = '');
   }
   _validaRut(e){
       this.shadowRoot.querySelector('#rutDoc').checkValidity = () => {     

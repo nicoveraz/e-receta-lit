@@ -27,8 +27,12 @@ const opts = {
 };
 
 async function captcha(){
-	//capturar respuesta del médico en la página (con firestore trigger)
-	return true;
+	//capturar respuesta del médico en la página (con firestore trigger events)
+	//pendiente individualizar médico
+	return await firestoreRef.collection('MEDICOS').doc('test').get()
+	.then(async r => {
+		return await r.data().txtCaptcha;
+	});
 }
 
 async function run(datos){
@@ -45,20 +49,19 @@ async function run(datos){
 	const SERIAL_SELECTOR = '#form\\:docNumber';
 	const BUTTON_SELECTOR = '#volverTable > tbody > tr > td > a';
 	const TYPE_SELECTOR = '#form\\:selectDocType';
-	const CAPT_SELECTOR = '#form\:inputCaptcha';
+	const CAPT_SELECTOR = '#form\\:inputCaptcha';
 	const RESULT_SELECTOR = '#tableResult > tbody > tr > td.setWidthOfSecondColumn';
 	const ERROR_SELECTOR = '#zoneErreur';
 	//selector captcha,guarda imagen  
 	const [el] = await page.$x('//*[@id="form:captchaPanel"]/img');
 	const imgCaptcha = await el.screenshot({encoding: 'base64'});
 	console.log(imgCaptcha);
-	const buffer = Buffer.from(b64string, "base64");
-	console.log(buffer);
 	await firestoreRef.collection('MEDICOS').doc('test').set({
-		captcha: buffer
+		captcha: imgCaptcha
 	}, {merge: true});
+	const delay = ms => new Promise(res => setTimeout(res, ms));
+	await delay(20000);
 
-	// await 30 sec respuesta captcha
 	const txtCaptcha = await captcha();
 	
 	await page.click(USERNAME_SELECTOR);
@@ -88,7 +91,7 @@ async function run(datos){
 	  }
 	  catch (e)
 	  {
-	    const navigationPromise = page.waitForNavigation();
+	    const navigationPromise = page.waitForNavigation({ timeout: 60, waitUntil: 'domcontentloaded' });
 	    await page.click(BUTTON_SELECTOR); // Clicking the link will indirectly cause a navigation
 	    await navigationPromise; // The navigationPromise resolves after navigation has finished
 	    let result = await page.evaluate((sel) => {
