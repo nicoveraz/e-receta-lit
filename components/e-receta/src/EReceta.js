@@ -39,7 +39,6 @@ export class EReceta extends LitElement {
         justify-content: space-around;
         min-width: 400px;
         margin: 0 auto;
-        padding: 0;
       }
 
       header ul li {
@@ -49,13 +48,17 @@ export class EReceta extends LitElement {
       header ul li a {
         color: #5a5c5e;
         text-decoration: none;
-        font-size: 18px;
+        font-size: 20px;
         line-height: 36px;
+        padding: 8px;
       }
 
-      header ul li a:hover,
+      header ul li a:hover {
+        color: blue;
+      }
       header ul li a.active {
         color: blue;
+        border-bottom: solid 3px blue;
       }
 
       main {
