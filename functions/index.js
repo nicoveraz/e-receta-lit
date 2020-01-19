@@ -23,17 +23,8 @@ exports.validaMed = functions.https.onCall( async (data) => {
 const puppeteer = require('puppeteer');
 const opts = {
   memory: '2GB', 
-  timeoutSeconds: 90
+  timeoutSeconds: 180
 };
-
-async function captcha(){
-	//capturar respuesta del médico en la página (con firestore trigger events)
-	//pendiente individualizar médico
-	return await firestoreRef.collection('MEDICOS').doc('test').get()
-	.then(async r => {
-		return await r.data().txtCaptcha;
-	});
-}
 
 async function run(datos){
 	const browser = await puppeteer.launch({
@@ -41,7 +32,7 @@ async function run(datos){
 	  });
 
 	const page = await browser.newPage();
-
+	await page.setDefaultNavigationTimeout(0);
 	await page.goto('https://portal.sidiv.registrocivil.cl/usuarios-portal/pages/DocumentRequestStatus.xhtml');
 
 	// dom element selectors
@@ -60,9 +51,16 @@ async function run(datos){
 		captcha: imgCaptcha
 	}, {merge: true});
 	const delay = ms => new Promise(res => setTimeout(res, ms));
-	await delay(20000);
+	await delay(10000);
 
-	const txtCaptcha = await captcha();
+	const txtCaptcha = await firestoreRef.collection('MEDICOS').doc('test').get()
+	.then(async r => {
+		return await r.data().txtCaptcha;
+	});
+
+	console.log(txtCaptcha);
+	console.log(datos.rut);
+	console.log(datos.serie);
 	
 	await page.click(USERNAME_SELECTOR);
 	await page.type(USERNAME_SELECTOR, datos.rut);
@@ -91,7 +89,7 @@ async function run(datos){
 	  }
 	  catch (e)
 	  {
-	    const navigationPromise = page.waitForNavigation({ timeout: 60, waitUntil: 'domcontentloaded' });
+	    const navigationPromise = page.waitForNavigation();
 	    await page.click(BUTTON_SELECTOR); // Clicking the link will indirectly cause a navigation
 	    await navigationPromise; // The navigationPromise resolves after navigation has finished
 	    let result = await page.evaluate((sel) => {
