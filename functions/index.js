@@ -74,34 +74,57 @@ async function run(datos){
 	await page.click(TYPE_SELECTOR);
 	await page.select(TYPE_SELECTOR, 'CEDULA');
 
+	console.log('Datos en la página regcivil');
+
 	let obj = null;
 	try {
-	    await page.click(BUTTON_SELECTOR);
-	    await page
-	    .waitFor(ERROR_SELECTOR, {visible: true, timeout:1000})
-	    .then(() => {
+		console.log('intento');
+		const navigationPromise = page.waitForNavigation();
+		await page.click(BUTTON_SELECTOR); // Clicking the link will indirectly cause a navigation
+		await navigationPromise; // The navigationPromise resolves after navigation has finished
+		let result = await page.evaluate((sel) => {
+		  let element = document.querySelector(sel);
+		  return element? element.innerHTML: null;
+		}, RESULT_SELECTOR);
 
-	      obj = {
-	        status: false,
-	        message: 'Serial incompatible'
-	      };
-	    });
-	  }
-	  catch (e)
-	  {
-	    const navigationPromise = page.waitForNavigation();
-	    await page.click(BUTTON_SELECTOR); // Clicking the link will indirectly cause a navigation
-	    await navigationPromise; // The navigationPromise resolves after navigation has finished
-	    let result = await page.evaluate((sel) => {
-	      let element = document.querySelector(sel);
-	      return element? element.innerHTML: null;
-	    }, RESULT_SELECTOR);
+		obj = {
+		  status: (result == "Vigente" ? true : false),
+		  message: result
+		};
+	} catch (e) {
+		console.log('ERROR', e);
+		obj = {
+		  status: 'ERROR',
+		  message: e
+		};
+	}
+	// try {
+	//     await page.click(BUTTON_SELECTOR);
+	//     await page
+	//     .waitFor(ERROR_SELECTOR, {visible: true, timeout:1000})
+	//     .then(() => {
 
-	    obj = {
-	      status: (result == "Vigente" ? true : false),
-	      message: result
-	    };
-	  }
+	//       obj = {
+	//         status: false,
+	//         message: 'Serial incompatible'
+	//       };
+	//     });
+	//   }
+	//   catch (e)
+	//   {
+	//     const navigationPromise = page.waitForNavigation();
+	//     await page.click(BUTTON_SELECTOR); // Clicking the link will indirectly cause a navigation
+	//     await navigationPromise; // The navigationPromise resolves after navigation has finished
+	//     let result = await page.evaluate((sel) => {
+	//       let element = document.querySelector(sel);
+	//       return element? element.innerHTML: null;
+	//     }, RESULT_SELECTOR);
+
+	//     obj = {
+	//       status: (result == "Vigente" ? true : false),
+	//       message: result
+	//     };
+	//   }
 
 	await browser.close();
 
