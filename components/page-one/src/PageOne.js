@@ -88,6 +88,7 @@ export class PageOne extends LitElement {
     super();
     this._emailValido = true;
     this._medValido = false;
+    this._serieValida = false;
     this._firma = false;
     this._rutDoc = '';
     this._rutValido = false;
@@ -105,11 +106,11 @@ export class PageOne extends LitElement {
         `:html`
           <h5 style="color: ${this._emailValido? 'black':'rgba(0,0,0,.3)'}">Paso 2: Validar Médico</h5>
           <p>(Sólo la primera vez: ingresar RUT y número de serie, con ello se obtiene registro Superintendencia de Salud)</p>
-          <vaadin-text-field clear-button-visible id="rutDoc" error-message="Rut inválido" label="RUT" ?disabled=${!this._emailValido} .value="${this._rutDoc}" @input="${(e) => {e.target.value = `${e.target.value === '-'? e.target.value.replace('-', '') : e.target.value.split('').pop() != '-'? e.target.value.replace('-','').slice(0, -1) + '-' + e.target.value.slice(-1): e.target.value.replace('-','')}`; this._validaRut(e.target.value)}}"></vaadin-text-field>      
+          <vaadin-text-field clear-button-visible id="rutDoc" error-message="Rut inválido" label="RUT" ?disabled=${!this._emailValido} .value="${this._rutDoc}" @input="${(e) => {e.target.value = `${e.target.value === '-'? e.target.value.replace('-', '') : e.target.value.split('').pop() != '-'? e.target.value.replace('-','').slice(0, -1) + '-' + e.target.value.slice(-1): e.target.value.replace('-','')}`; this._rutDoc = e.target.value; console.log(this._rutDoc); this._validaRut(e.target.value)}}"></vaadin-text-field>      
           <vaadin-text-field label="Número de Serie" .value="${this._numSerie}" ?disabled=${!this._rutValido} @input="${e => this._numSerie = e.target.value}"></vaadin-text-field>      
-          <vaadin-button ?disabled="${!this._rutDoc && !this._numSerie}" @click="${(e) => this._validaMed()}" theme="primary">Validar</vaadin-button><br>   
-          <vaadin-text-field label="Estado CI" readonly ?disabled=${!this._emailValido}></vaadin-text-field>       
-          <vaadin-text-field label="Registro Superintendencia" .value="${this._medicoValidado}" readonly ?disabled=${!this._emailValido}></vaadin-text-field>       
+          <vaadin-button ?disabled="${!this._rutDoc || !this._numSerie}" @click="${(e) => this._validaMed(this._rutDoc)}" theme="primary">Validar</vaadin-button><br>   
+          <vaadin-text-field label="Estado CI" readonly .value="${this._serieValida}" ?disabled=${!this._emailValido}></vaadin-text-field>       
+          <vaadin-text-field label="Registro Superintendencia" .value="${this._medValido}" readonly ?disabled=${!this._emailValido}></vaadin-text-field>       
           <h5 style="color: ${this._medValido? 'black':'rgba(0,0,0,.3)'}">Paso 3: Llave Pública y Privada</h5>
           <p>(Sólo la primera vez)</p>
           <vaadin-password-field label="Frase Clave (no puede olvidarla)" ?disabled=${!this._medValido}></vaadin-password-field>      
@@ -152,18 +153,18 @@ export class PageOne extends LitElement {
         }
       };
     }
-  _validaMed(){
+  _validaMed(r){
     var validaMed = firebase.functions().httpsCallable('validaMed');
     var validaRutSerie = firebase.functions().httpsCallable('validaSerie');
-    var rut = this._rutDoc.substring(0, this._rutDoc.indexOf('-'));
+    var rut = r.substring(0, r.indexOf('-'));
     validaMed({rut: rut})
     .then(r => {
-      console.log(r.data.prestador.codigoBusqueda);
-      this._medicoValidado = (r.data.prestador.codigoBusqueda == "Médico Cirujano");
+      console.log(r);
+      this._medValido = (r.data.prestador.codigoBusqueda == "Médico Cirujano");
       validaRutSerie({rut: this._rutDoc, serie: this._numSerie})
       .then(d => {
-         this._serieValida = (d.data.message == 'Vigente');
-         console.log(d.data.message);
+        console.log(d);
+        this._serieValida = (d.data.message == 'Vigente');
       });
     })
     .catch(function(error) {
