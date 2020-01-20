@@ -1,6 +1,9 @@
 import { LitElement, html, css } from 'lit-element';
 import { classMap } from 'lit-html/directives/class-map.js';
 import { eRecetaLogo } from './e-receta-logo.js';
+import { setPassiveTouchGestures } from '@polymer/polymer/lib/utils/settings.js';
+import 'pwa-helper-components/pwa-install-button.js';
+import 'pwa-helper-components/pwa-update-available.js';
 
 import '../../page-main/page-main.js';
 import '../../page-one/page-one.js';
@@ -54,11 +57,11 @@ export class EReceta extends LitElement {
       }
 
       header ul li a:hover {
-        color: blue;
+        color: #1676f3;
       }
       header ul li a.active {
-        color: blue;
-        border-bottom: solid 3px blue;
+        color: #1676f3;
+        border-bottom: solid 3px #1676f3;
       }
 
       main {
@@ -79,6 +82,7 @@ export class EReceta extends LitElement {
 
   constructor() {
     super();
+    setPassiveTouchGestures(true);
     this.page = 'pageOne';
   }
 

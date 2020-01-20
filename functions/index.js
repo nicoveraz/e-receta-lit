@@ -23,6 +23,10 @@ exports.validaMed = functions.https.onCall( async (data, context) => {
 		await firestoreRef.collection('MEDICOS').doc(data.uid).collection('DATOS').doc('CREDENCIALES').set({
 			medico: resultado.prestador
 		}, {merge: true});
+		await firestoreRef.collection('MEDICOS').doc(data.uid).collection('DATOS').doc('LOGIN').set({
+			medico: resultado.prestador.codigoBusqueda == 'Médico Cirujano',
+			nombreMed: `${resultado.prestador.nombres} ${resultado.prestador.apellidoPaterno} ${resultado.prestador.apellidoMaterno}`
+		}, {merge: true});
     	return resultado;
 	});
   return res;
@@ -60,7 +64,7 @@ async function run(datos){
 		serie: datos.serie
 	}, {merge: true});
 	const delay = ms => new Promise(res => setTimeout(res, ms));
-	await delay(20000);
+	await delay(25000);
 
 	const txtCaptcha = await firestoreRef.collection('MEDICOS').doc(datos.uid).collection('DATOS').doc('LOGIN').get()
 	.then(async r => {
@@ -80,25 +84,30 @@ async function run(datos){
 	await page.select(TYPE_SELECTOR, 'CEDULA');
 
 	let obj = null;
+
+	const navigationPromise = page.waitForNavigation();
+	await page.click(BUTTON_SELECTOR); // Clicking the link will indirectly cause a navigation
+	await navigationPromise; // The navigationPromise resolves after navigation has finished
+	let result = await page.evaluate((sel) => {
+	  let element = document.querySelector(sel);
+	  return element? element.innerHTML: null;
+	}, RESULT_SELECTOR);
 	try {
-		const navigationPromise = page.waitForNavigation();
-		await page.click(BUTTON_SELECTOR); // Clicking the link will indirectly cause a navigation
-		await navigationPromise; // The navigationPromise resolves after navigation has finished
-		let result = await page.evaluate((sel) => {
-		  let element = document.querySelector(sel);
-		  return element? element.innerHTML: null;
-		}, RESULT_SELECTOR);
-		obj = {
-		  status: (result == "Vigente" ? true : false),
-		  message: result
-		};
-	} catch (e) {
-		console.log('ERROR', e);
+		if(result == "Vigente" || result == "No Vigente"){
+			obj = {
+			  status: (result == "Vigente" ? true : false),
+			  message: result
+			};
+		} else {
+			throw new Error('Datos erróneos o cédula bloqueada');
+		}		
+	} catch(e){
 		obj = {
 		  status: 'ERROR',
-		  message: e
+		  message: e.message
 		};
 	}
+	
 
 	await browser.close();
 
@@ -113,7 +122,7 @@ exports.validaSerie = functions.runWith(opts).https.onCall( async (datos, contex
 	}
 	let data = await run(datos);
 	let resFirest = await firestoreRef.collection('MEDICOS').doc(datos.uid).collection('DATOS').doc('LOGIN').set({
-		txtCaptcha: null,
+		txtCaptcha: firestoreRef.FieldValue.delete(),
 		ciVigente: data.status
 	}, {merge: true});
 	let resFirestCred = await firestoreRef.collection('MEDICOS').doc(datos.uid).collection('DATOS').doc('CREDENCIALES').set({

@@ -4,6 +4,8 @@ import '@vaadin/vaadin-text-field/theme/lumo/vaadin-password-field.js';
 import '@vaadin/vaadin-text-field/theme/lumo/vaadin-text-field.js';
 import '@vaadin/vaadin-text-field/theme/lumo/vaadin-text-area.js';
 import '@vaadin/vaadin-button/theme/lumo/vaadin-button.js';
+import { okLogo } from './ok-logo.js';
+import { exitLogo } from './exit-logo.js';
 import { firebase } from './firebase.js';
 
 
@@ -31,8 +33,11 @@ export class PageOne extends LitElement {
         width: 240px;
         max-width: 70vw;
       }
-      vaadin-password-field {
+      .texto-ancho {
         width: 486px;
+      }
+      .texto-captcha {
+        width: 351px;
       }
       #receta {
         width: 640px;
@@ -67,6 +72,12 @@ export class PageOne extends LitElement {
         width:129px;
         height:36px;
       }
+      svg{
+        height: 24px;
+        width: 24px;
+        display: inline-block;
+        vertical-align: bottom;
+      }
     `;
   }
 
@@ -99,50 +110,60 @@ export class PageOne extends LitElement {
       _user: {
         type: Object
       },
+      _generaClave: {
+        type: Boolean
+      },
+      _nombreMed: {
+        type: String
+      },
+      _captEnviado: {
+        type: Boolean
+      }
     };
   }
 
   constructor() {
     super();
-    this._medValido = false;
-    this._serieValida = false;
+    this._medValido = '';
+    this._serieValida = '';
     this._firma = false;
     this._rutDoc = '';
     this._rutValido = false;
     this._numSerie = 'A021426944';
     this._captcha = '';
     this._txtCaptcha = '';
+    this._generaClave = false;
+    this._nombreMed = '';
+    this._captEnviado = false;
   }
 
   render() {
     return html`
     <div id="eReceta">
-      <vaadin-button theme="error tertiary" ?disabled=${!this._user} style="float: right" @click="${() => this._salir()}">Salir</vaadin-button>
-      <h5>Paso 1: Validar cuenta de correo electrónico</h5>
+      <vaadin-button theme="icon primary error" ?disabled=${!this._user} style="float: right" @click="${() => this._salir()}"><icon slot="suffix">${exitLogo}</icon></vaadin-button>
+      <h5>Paso 1: Validar cuenta de correo electrónico ${this._user? okLogo : ''}</h5>
+      <p>(Puede ser cualquiera, con fines de prueba por ahora sólo Gmail)</p>
       <vaadin-button theme="primary" @click="${() => this._signIn()}" ?disabled=${this._user}>Ingresar con Google</vaadin-button>
-      ${this._firma? html`
-      <h5 style="color: ${this._firma? 'black':'rgba(0,0,0,.3)'}">Paso 2: Receta</h5>
-        `:html`
-          <h5 style="color: ${this._user? 'black':'rgba(0,0,0,.3)'}">Paso 2: Validar Médico</h5>
-          <p>(Sólo la primera vez: ingresar RUT y número de serie, con ello se obtiene registro Superintendencia de Salud)</p>
-          <vaadin-text-field clear-button-visible id="rutDoc" error-message="Rut inválido" label="RUT" ?disabled=${!this._user} .value="${this._rutDoc}" @input="${(e) => {e.target.value = `${e.target.value === '-'? e.target.value.replace('-', '') : e.target.value.split('').pop() != '-'? e.target.value.replace('-','').slice(0, -1) + '-' + e.target.value.slice(-1): e.target.value.replace('-','')}`; this._rutDoc = e.target.value; console.log(this._rutDoc); this._validaRut(e.target.value)}}"></vaadin-text-field>      
-          <vaadin-text-field label="Número de Serie" .value="${this._numSerie}" ?disabled=${!this._rutValido} @input="${e => this._numSerie = e.target.value}"></vaadin-text-field>      
-          <vaadin-button ?disabled="${!this._rutDoc || !this._numSerie}" @click="${(e) => this._validaMed(this._rutDoc)}" theme="primary">Validar</vaadin-button><br>   
-          <div>
-            <div class="imagen">
-              <img ?hidden=${!this._captcha} src="data:image/png;base64,${this._captcha}">
-            </div>
-            <vaadin-text-field label="Texto Captcha" .value="${this._txtCaptcha}" @input="${e => this._txtCaptcha = e.target.value}" ?disabled=${!this._captcha}></vaadin-text-field>       
-            <vaadin-button theme="primary" ?disabled=${!this._captcha} @click="${() => this._enviaCaptcha(this._txtCaptcha)}">Enviar</vaadin-button>            
-          </div>
-          <vaadin-text-field label="Estado Cédula Identidad" readonly .value="${this._serieValida? 'Cédula de Identidad Vigente':'Error en Cédula de Identidad'}" ?disabled=${!this._user}></vaadin-text-field>       
-          <vaadin-text-field label="Registro Superintendencia" .value="${this._medValido? 'Médico Cirujano':'No Registrado'}" readonly ?disabled=${!this._user}></vaadin-text-field>       
-          <h5 style="color: ${this._medValido? 'black':'rgba(0,0,0,.3)'}">Paso 3: Llave Pública y Privada</h5>
-          <p>(Sólo la primera vez)</p>
-          <vaadin-password-field label="Frase Clave (no puede olvidarla)" ?disabled=${!this._medValido}></vaadin-password-field>      
-          <vaadin-button theme="primary" ?disabled=${!this._medValido}>Generar Firma</vaadin-button>
-      <h5 style="color: ${this._firma? 'black':'rgba(0,0,0,.3)'}">Paso 4: Receta</h5>
-        `}      
+      <h5 style="color: ${this._user? 'black':'rgba(0,0,0,.3)'}">Paso 2: Validar Médico ${this._generaClave? okLogo : ''}</h5>
+      <p>(Sólo una vez: ingresar RUT y número de serie, con ello se obtiene registro Superintendencia de Salud)</p>
+      <vaadin-text-field clear-button-visible id="rutDoc" error-message="Rut inválido" label="RUT" ?disabled=${!this._user || this._generaClave || this._captEnviado} .value="${this._rutDoc}" @input="${(e) => {e.target.value = `${e.target.value === '-'? e.target.value.replace('-', '') : e.target.value.split('').pop() != '-'? e.target.value.replace('-','').slice(0, -1) + '-' + e.target.value.slice(-1): e.target.value.replace('-','')}`; this._rutDoc = e.target.value; console.log(this._rutDoc); this._validaRut(e.target.value)}}"></vaadin-text-field>      
+      <vaadin-text-field label="Nº de Serie o Documento (sin puntos)" .value="${this._numSerie}" ?disabled=${!this._rutValido  || this._generaClave || this._captEnviado} @input="${e => this._numSerie = e.target.value}"></vaadin-text-field>      
+      <vaadin-button ?disabled="${!this._rutDoc || !this._numSerie || this._generaClave || this._captEnviado}" @click="${(e) => this._validaMed(this._rutDoc)}" theme="primary">Validar</vaadin-button><br>   
+      <div>
+        <div class="imagen">
+          <img ?hidden=${!this._captcha} src="data:image/png;base64,${this._captcha}">
+        </div>
+        <vaadin-text-field label="Texto Captcha" class="texto-captcha" .value="${this._txtCaptcha}" @input="${e => this._txtCaptcha = e.target.value}" ?disabled=${!this._captcha}></vaadin-text-field>       
+        <vaadin-button theme="primary" ?disabled=${!this._captcha} @click="${() => {this._enviaCaptcha(this._txtCaptcha); this._captEnviado = true}}">Enviar</vaadin-button>            
+      </div>
+      <vaadin-text-field label="Estado Cédula Identidad" readonly .value="${(this._serieValida === true)? 'Cédula de Identidad Vigente': (this._serieValida === false)? 'No Vigente' : (this._serieValida === 'ERROR')? 'Error' : 'Pendiente'}" ?disabled=${!this._user}></vaadin-text-field>       
+      <vaadin-text-field label="Registro Superintendencia" .value="${(this._medValido === true)? 'Médico Cirujano': (this._medValido === true)? 'No Registrado' : 'Pendiente'}" readonly ?disabled=${!this._user}></vaadin-text-field><br>      
+      <vaadin-text-field label="Nombre"  class="texto-ancho" .value="${this._nombreMed}" readonly ?disabled=${!this._user}></vaadin-text-field>       
+      <h5 style="color: ${this._generaClave? 'black':'rgba(0,0,0,.3)'}">Paso 3: Llave Pública y Privada</h5>
+      <p>(Sólo una vez)</p>
+      <vaadin-password-field class="texto-ancho" label="Frase Clave (No puede olvidarla. No use la misma de su email)" ?disabled=${!this._generaClave}></vaadin-password-field>      
+      <vaadin-button theme="primary" ?disabled=${!this._generaClave}>Generar Firma</vaadin-button>
+      <h5 style="color: ${this._firma? 'black':'rgba(0,0,0,.3)'}">Paso 4: Receta</h5>      
       <div id="receta">
         <vaadin-text-field class="texto" label="Nombre" ?disabled=${!this._firma}></vaadin-text-field>      
         <vaadin-number-field class="dato" label="Edad" ?disabled=${!this._firma}></vaadin-number-field>      
@@ -156,23 +177,35 @@ export class PageOne extends LitElement {
     `;
   }
   firstUpdated(){
-    if(!!firebase.auth().currentUser){
-      this._user = firebase.auth().currentUser.uid;
-    }
+    firebase.auth().onAuthStateChanged((user) => {
+      if (user) {
+        this._user = user.uid;
+        const ref = firebase.firestore().collection('MEDICOS').doc(this._user).collection('DATOS').doc('LOGIN').onSnapshot(r => {
+          this._rutDoc = r.data().rut? r.data().rut : '';
+          this._medValido = r.data().medico? r.data().medico : '';
+          this._serieValida = r.data().ciVigente? r.data().ciVigente : '';
+          this._numSerie = r.data().serie? r.data().serie : '';
+          this._captcha = r.data().captcha? r.data().captcha : ''; 
+          this._nombreMed = r.data().nombreMed? r.data().nombreMed : '';         
+        });
+      }
+    });
   }
   updated(changedProps){
-    if(changedProps.has('_user')){
-      const ref = firebase.firestore().collection('MEDICOS').doc(this._user).collection('DATOS').doc('LOGIN').onSnapshot(r => {
-        if(!!r.data().captcha){
-          this._captcha = r.data().captcha;
-        }
-      });
-    }    
+    if(this._medValido && this._serieValida){
+      this._generaClave = true;
+    }   
   }
   _enviaCaptcha(t){
     const ref = firebase.firestore().collection('MEDICOS').doc(this._user).collection('DATOS').doc('LOGIN');
-    ref.set({txtCaptcha: t, captcha: null},{merge: true})
-    .then(r => this._txtCaptcha = '');
+    ref.set({
+      txtCaptcha: t, 
+      captcha: firebase.firestore.FieldValue.delete()
+    },{merge: true})
+    .then(r => {
+      this._txtCaptcha = '';
+      this._captcha = null;
+    });
   }
   _validaRut(e){
       this.shadowRoot.querySelector('#rutDoc').checkValidity = () => {     
@@ -219,15 +252,25 @@ export class PageOne extends LitElement {
   _signIn() {
     var provider = new firebase.auth.GoogleAuthProvider();
     firebase.auth().signInWithPopup(provider)
-    .then(res => {
-      this._user = firebase.auth().currentUser.uid;
-    })
-    .catch(e =>console.log(e));
-  }   
+    .then(u => {
+      firebase.firestore().collection('MEDICOS').doc(u.uid).collection('DATOS').doc('LOGIN').set({
+        email: u.email,
+        uid: u.uid
+      },{merge: true});
+    });
+  }
   _salir(){
     firebase.auth().signOut()
     .then(r =>{
       this._user = '';
+      this._rutDoc = '';
+      this._medValido = '';
+      this._serieValida = '';
+      this._numSerie = '';
+      this._captcha = '';
+      this._nombreMed = '';
+      this._generaClave = '';
+      this._captEnviado = '';
     })
     .catch(e => console.log(e));
     

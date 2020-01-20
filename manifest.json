@@ -1,0 +1,10 @@
+{
+	"name" : "e-receta",
+	"short_name" : "e-receta",
+	"description" : "Receta Electrónica según NewtriLabs",
+	"start_url" : "https://e-receta.cl",
+	"display" : "standalone",
+	"orientation" : "portrait-primary",
+	"lang" : "Spanish; Castilian",
+	"background_color" : "pick"
+}
