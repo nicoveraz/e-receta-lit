@@ -5,17 +5,25 @@ admin.initializeApp();
 
 const firestoreRef = admin.firestore();
 
-exports.validaMed = functions.https.onCall( async (data) => {
+exports.validaMed = functions.https.onCall( async (data, context) => {
+	if (!(context.auth && context.auth.token)) {
+	  throw new functions.https.HttpsError(
+	    'permission-denied'
+	  );
+	}
   	const rut = data.rut;
 	const dataString = functions.config().supersalud.key;
-	const url = 'https://api.superdesalud.gob.cl/prestadores/v1/prestadores/' + rut + '.json' + '/?auth_key=' + dataString;
+	const url = `https://api.superdesalud.gob.cl/prestadores/v1/prestadores/${rut}.json/?auth_key=${dataString}`;
 	var options = {
 		url: url,
 		json: true
 	};
   var res = await rp(options)
-	.then(resultado =>{
-    return resultado;
+	.then(async resultado =>{
+		await firestoreRef.collection('MEDICOS').doc(data.uid).collection('DATOS').doc('CREDENCIALES').set({
+			medico: resultado.prestador
+		}, {merge: true});
+    	return resultado;
 	});
   return res;
 });
@@ -46,21 +54,18 @@ async function run(datos){
 	//selector captcha,guarda imagen  
 	const [el] = await page.$x('//*[@id="form:captchaPanel"]/img');
 	const imgCaptcha = await el.screenshot({encoding: 'base64'});
-	console.log(imgCaptcha);
-	await firestoreRef.collection('MEDICOS').doc('test').set({
-		captcha: imgCaptcha
+	await firestoreRef.collection('MEDICOS').doc(datos.uid).collection('DATOS').doc('LOGIN').set({
+		captcha: imgCaptcha,
+		rut: datos.rut,
+		serie: datos.serie
 	}, {merge: true});
 	const delay = ms => new Promise(res => setTimeout(res, ms));
-	await delay(10000);
+	await delay(20000);
 
-	const txtCaptcha = await firestoreRef.collection('MEDICOS').doc('test').get()
+	const txtCaptcha = await firestoreRef.collection('MEDICOS').doc(datos.uid).collection('DATOS').doc('LOGIN').get()
 	.then(async r => {
 		return await r.data().txtCaptcha;
 	});
-
-	console.log(txtCaptcha);
-	console.log(datos.rut);
-	console.log(datos.serie);
 	
 	await page.click(USERNAME_SELECTOR);
 	await page.type(USERNAME_SELECTOR, datos.rut);
@@ -74,11 +79,8 @@ async function run(datos){
 	await page.click(TYPE_SELECTOR);
 	await page.select(TYPE_SELECTOR, 'CEDULA');
 
-	console.log('Datos en la página regcivil');
-
 	let obj = null;
 	try {
-		console.log('intento');
 		const navigationPromise = page.waitForNavigation();
 		await page.click(BUTTON_SELECTOR); // Clicking the link will indirectly cause a navigation
 		await navigationPromise; // The navigationPromise resolves after navigation has finished
@@ -86,7 +88,6 @@ async function run(datos){
 		  let element = document.querySelector(sel);
 		  return element? element.innerHTML: null;
 		}, RESULT_SELECTOR);
-
 		obj = {
 		  status: (result == "Vigente" ? true : false),
 		  message: result
@@ -98,40 +99,25 @@ async function run(datos){
 		  message: e
 		};
 	}
-	// try {
-	//     await page.click(BUTTON_SELECTOR);
-	//     await page
-	//     .waitFor(ERROR_SELECTOR, {visible: true, timeout:1000})
-	//     .then(() => {
-
-	//       obj = {
-	//         status: false,
-	//         message: 'Serial incompatible'
-	//       };
-	//     });
-	//   }
-	//   catch (e)
-	//   {
-	//     const navigationPromise = page.waitForNavigation();
-	//     await page.click(BUTTON_SELECTOR); // Clicking the link will indirectly cause a navigation
-	//     await navigationPromise; // The navigationPromise resolves after navigation has finished
-	//     let result = await page.evaluate((sel) => {
-	//       let element = document.querySelector(sel);
-	//       return element? element.innerHTML: null;
-	//     }, RESULT_SELECTOR);
-
-	//     obj = {
-	//       status: (result == "Vigente" ? true : false),
-	//       message: result
-	//     };
-	//   }
 
 	await browser.close();
 
 	return obj;
 }
 
-exports.validaSerie = functions.runWith(opts).https.onCall( async (datos) => {
-	let data = run(datos);
+exports.validaSerie = functions.runWith(opts).https.onCall( async (datos, context) => {
+	if (!(context.auth && context.auth.token)) {
+	  throw new functions.https.HttpsError(
+	    'permission-denied'
+	  );
+	}
+	let data = await run(datos);
+	let resFirest = await firestoreRef.collection('MEDICOS').doc(datos.uid).collection('DATOS').doc('LOGIN').set({
+		txtCaptcha: null,
+		ciVigente: data.status
+	}, {merge: true});
+	let resFirestCred = await firestoreRef.collection('MEDICOS').doc(datos.uid).collection('DATOS').doc('CREDENCIALES').set({
+		ciVigente: data.status
+	}, {merge: true});
 	return data;
 });

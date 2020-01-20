@@ -72,9 +72,6 @@ export class PageOne extends LitElement {
 
   static get properties() {
     return {
-      _emailValido: {
-        type: Boolean
-      },
       _medValido: {
         type: Boolean
       },
@@ -98,13 +95,15 @@ export class PageOne extends LitElement {
       },
       _txtCaptcha: {
         type: String
-      }
+      },
+      _user: {
+        type: Object
+      },
     };
   }
 
   constructor() {
     super();
-    this._emailValido = true;
     this._medValido = false;
     this._serieValida = false;
     this._firma = false;
@@ -113,24 +112,20 @@ export class PageOne extends LitElement {
     this._numSerie = 'A021426944';
     this._captcha = '';
     this._txtCaptcha = '';
-    const ref = firebase.firestore().collection('MEDICOS').doc('test').onSnapshot(r => {
-      console.log(r.data());
-      this._captcha = r.data().captcha;
-    });
   }
 
   render() {
     return html`
     <div id="eReceta">
-      <vaadin-button theme="error tertiary" ?disabled=${!this._emailValido} style="float: right">Salir</vaadin-button>
+      <vaadin-button theme="error tertiary" ?disabled=${!this._user} style="float: right" @click="${() => this._salir()}">Salir</vaadin-button>
       <h5>Paso 1: Validar cuenta de correo electrónico</h5>
-      <vaadin-button theme="primary">Ingresar con Google</vaadin-button>
+      <vaadin-button theme="primary" @click="${() => this._signIn()}" ?disabled=${this._user}>Ingresar con Google</vaadin-button>
       ${this._firma? html`
       <h5 style="color: ${this._firma? 'black':'rgba(0,0,0,.3)'}">Paso 2: Receta</h5>
         `:html`
-          <h5 style="color: ${this._emailValido? 'black':'rgba(0,0,0,.3)'}">Paso 2: Validar Médico</h5>
+          <h5 style="color: ${this._user? 'black':'rgba(0,0,0,.3)'}">Paso 2: Validar Médico</h5>
           <p>(Sólo la primera vez: ingresar RUT y número de serie, con ello se obtiene registro Superintendencia de Salud)</p>
-          <vaadin-text-field clear-button-visible id="rutDoc" error-message="Rut inválido" label="RUT" ?disabled=${!this._emailValido} .value="${this._rutDoc}" @input="${(e) => {e.target.value = `${e.target.value === '-'? e.target.value.replace('-', '') : e.target.value.split('').pop() != '-'? e.target.value.replace('-','').slice(0, -1) + '-' + e.target.value.slice(-1): e.target.value.replace('-','')}`; this._rutDoc = e.target.value; console.log(this._rutDoc); this._validaRut(e.target.value)}}"></vaadin-text-field>      
+          <vaadin-text-field clear-button-visible id="rutDoc" error-message="Rut inválido" label="RUT" ?disabled=${!this._user} .value="${this._rutDoc}" @input="${(e) => {e.target.value = `${e.target.value === '-'? e.target.value.replace('-', '') : e.target.value.split('').pop() != '-'? e.target.value.replace('-','').slice(0, -1) + '-' + e.target.value.slice(-1): e.target.value.replace('-','')}`; this._rutDoc = e.target.value; console.log(this._rutDoc); this._validaRut(e.target.value)}}"></vaadin-text-field>      
           <vaadin-text-field label="Número de Serie" .value="${this._numSerie}" ?disabled=${!this._rutValido} @input="${e => this._numSerie = e.target.value}"></vaadin-text-field>      
           <vaadin-button ?disabled="${!this._rutDoc || !this._numSerie}" @click="${(e) => this._validaMed(this._rutDoc)}" theme="primary">Validar</vaadin-button><br>   
           <div>
@@ -140,8 +135,8 @@ export class PageOne extends LitElement {
             <vaadin-text-field label="Texto Captcha" .value="${this._txtCaptcha}" @input="${e => this._txtCaptcha = e.target.value}" ?disabled=${!this._captcha}></vaadin-text-field>       
             <vaadin-button theme="primary" ?disabled=${!this._captcha} @click="${() => this._enviaCaptcha(this._txtCaptcha)}">Enviar</vaadin-button>            
           </div>
-          <vaadin-text-field label="Estado CI" readonly .value="${this._serieValida}" ?disabled=${!this._emailValido}></vaadin-text-field>       
-          <vaadin-text-field label="Registro Superintendencia" .value="${this._medValido}" readonly ?disabled=${!this._emailValido}></vaadin-text-field>       
+          <vaadin-text-field label="Estado Cédula Identidad" readonly .value="${this._serieValida? 'Cédula de Identidad Vigente':'Error en Cédula de Identidad'}" ?disabled=${!this._user}></vaadin-text-field>       
+          <vaadin-text-field label="Registro Superintendencia" .value="${this._medValido? 'Médico Cirujano':'No Registrado'}" readonly ?disabled=${!this._user}></vaadin-text-field>       
           <h5 style="color: ${this._medValido? 'black':'rgba(0,0,0,.3)'}">Paso 3: Llave Pública y Privada</h5>
           <p>(Sólo la primera vez)</p>
           <vaadin-password-field label="Frase Clave (no puede olvidarla)" ?disabled=${!this._medValido}></vaadin-password-field>      
@@ -160,8 +155,22 @@ export class PageOne extends LitElement {
     <div>
     `;
   }
+  firstUpdated(){
+    if(!!firebase.auth().currentUser){
+      this._user = firebase.auth().currentUser.uid;
+    }
+  }
+  updated(changedProps){
+    if(changedProps.has('_user')){
+      const ref = firebase.firestore().collection('MEDICOS').doc(this._user).collection('DATOS').doc('LOGIN').onSnapshot(r => {
+        if(!!r.data().captcha){
+          this._captcha = r.data().captcha;
+        }
+      });
+    }    
+  }
   _enviaCaptcha(t){
-    const ref = firebase.firestore().collection('MEDICOS').doc('test');
+    const ref = firebase.firestore().collection('MEDICOS').doc(this._user).collection('DATOS').doc('LOGIN');
     ref.set({txtCaptcha: t, captcha: null},{merge: true})
     .then(r => this._txtCaptcha = '');
   }
@@ -193,11 +202,11 @@ export class PageOne extends LitElement {
     var validaMed = firebase.functions().httpsCallable('validaMed');
     var validaRutSerie = firebase.functions().httpsCallable('validaSerie');
     var rut = r.substring(0, r.indexOf('-'));
-    validaMed({rut: rut})
+    validaMed({uid: this._user, rut: rut})
     .then(r => {
       console.log(r);
       this._medValido = (r.data.prestador.codigoBusqueda == "Médico Cirujano");
-      validaRutSerie({rut: this._rutDoc, serie: this._numSerie})
+      validaRutSerie({uid: this._user, rut: this._rutDoc, serie: this._numSerie})
       .then(d => {
         console.log(d);
         this._serieValida = (d.data.message == 'Vigente');
@@ -206,5 +215,21 @@ export class PageOne extends LitElement {
     .catch(function(error) {
       console.log(error);
     });
+  }
+  _signIn() {
+    var provider = new firebase.auth.GoogleAuthProvider();
+    firebase.auth().signInWithPopup(provider)
+    .then(res => {
+      this._user = firebase.auth().currentUser.uid;
+    })
+    .catch(e =>console.log(e));
+  }   
+  _salir(){
+    firebase.auth().signOut()
+    .then(r =>{
+      this._user = '';
+    })
+    .catch(e => console.log(e));
+    
   }
 }
