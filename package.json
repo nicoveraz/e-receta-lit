@@ -16,6 +16,8 @@
   "author": "e-receta",
   "license": "MIT",
   "dependencies": {
+    "@material/mwc-icon-button": "^0.12.0",
+    "@material/mwc-icon-button-toggle": "^0.12.0",
     "@vaadin/vaadin-button": "^2.2.2",
     "@vaadin/vaadin-form-layout": "^2.1.6",
     "@vaadin/vaadin-text-field": "^2.5.3",

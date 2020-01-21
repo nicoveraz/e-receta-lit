@@ -5,9 +5,9 @@ import '@vaadin/vaadin-text-field/theme/lumo/vaadin-text-field.js';
 import '@vaadin/vaadin-text-field/theme/lumo/vaadin-text-area.js';
 import '@vaadin/vaadin-button/theme/lumo/vaadin-button.js';
 import 'webcomponent-qr-code';
+import { IconButton } from '@material/mwc-icon-button/mwc-icon-button.js';
 
 import { okLogo } from './ok-logo.js';
-import { exitLogo } from './exit-logo.js';
 import { firebase } from './firebase.js';
 
 
@@ -44,9 +44,15 @@ export class PageOne extends LitElement {
       .texto-captcha {
         width: 276px;
       }
-      #receta {
+      .receta {
         width: 640px;
         max-width: 95vw;
+      }
+      .qr {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 600px;
       }
       @media(max-width: 700px){
         #receta{
@@ -87,6 +93,19 @@ export class PageOne extends LitElement {
         display: inline-block;
         width: calc(640px - 130px);
         max-width: 70vw; 
+      }
+      qr-code{
+        margin: 25px auto;
+      }
+      mwc-icon-button {
+        background: #f52419;
+        color: white;
+        border-radius: 50%;
+      }
+      mwc-icon-button[disabled] {
+        background: #f52419;
+        --mdc-theme-text-disabled-on-light: white;
+        opacity: .4;
       }
     `;
   }
@@ -170,7 +189,7 @@ export class PageOne extends LitElement {
   render() {
     return html`
     <div id="eReceta">
-      <vaadin-button theme="icon primary error" ?disabled=${!this._user} style="float: right" @click="${() => this._salir()}" aria-label="Salir"><icon slot="suffix">${exitLogo}</icon></vaadin-button>
+      <mwc-icon-button ?disabled=${!this._user} icon="close" style="float: right" @click="${() => this._salir()}" aria-label="Salir"></mwc-icon-button>
       <h5>Paso 1: Validar cuenta de correo electrónico ${this._user? okLogo : ''}</h5>
       <p>(Puede ser cualquiera, con fines de prueba por ahora sólo Gmail)</p>
       <vaadin-button theme="primary" @click="${() => this._signIn()}" ?disabled=${this._user}>Ingresar con Google</vaadin-button>
@@ -194,7 +213,7 @@ export class PageOne extends LitElement {
       <vaadin-password-field class="texto-ancho" label="Frase Clave (No puede olvidarla. No use la misma de su email)" ?disabled=${!this._generaClave || this._key} .value="${this._passphrase}" @input="${e => this._passphrase = e.target.value}"></vaadin-password-field>      
       <vaadin-button theme="primary" @click="${(e) => this._fxGeneraFirma(this._medValido, this._serieValida, this._user, this._passphrase)}" ?disabled="${!this._passphrase || this._key}">Generar Firma</vaadin-button>
       <h5 style="color: ${this._key? 'black':'rgba(0,0,0,.3)'}">Paso 4: Receta</h5>            
-      <div id="receta">
+      <div class="receta">
         <vaadin-text-field class="texto" label="Nombre" ?disabled=${!this._key} id="nombrePte" @input="${e => this._receta.nombrePte = e.target.value}"></vaadin-text-field>      
         <vaadin-number-field class="dato" label="Edad" ?disabled=${!this._key} id="edadPte" @input="${e => this._receta.edadPte = e.target.value}"></vaadin-number-field>      
         <vaadin-text-field class="texto" label="Dirección" ?disabled=${!this._key} id="direccionPte" @input="${e => this._receta.direccionPte = e.target.value}"></vaadin-text-field>      
@@ -204,8 +223,11 @@ export class PageOne extends LitElement {
         <vaadin-password-field class="texto" label="Frase Clave" id="fraseClave" ?disabled=${!this._key} @input="${e => this._fraseClave = e.target.value}"></vaadin-password-field>      
         <vaadin-button ?disabled="${!this._fraseClave}" theme="primary" @click="${() => {this._creaReceta(this._receta, this._fraseClave); this._borraReceta()}}">Crear Receta</vaadin-button> 
         <div class="flotaIzq" style="margin-right: 1px;"></div><vaadin-button ?disabled="${!this._key}" theme="primary error" @click="${() => this._borraReceta()}">Borrar Receta</vaadin-button>          
-      </div> 
-      <qr-code format="svg" .data="${this._qr}"></qr-code>  
+      </div>
+      <h5 style="color: ${this._qr? 'black':'rgba(0,0,0,.3)'}">Resultado: QR Receta ${this._qr? okLogo : ''}</h5> 
+      <div class="receta qr">
+        <qr-code format="svg" ?hidden="${!this._qr}" .data="${this._qr}"></qr-code>          
+      </div>
     <div>
     `;
   }
@@ -244,6 +266,7 @@ export class PageOne extends LitElement {
     this.shadowRoot.querySelector('#edadPte').value = '';
     this.shadowRoot.querySelector('#rpPte').value = '';
     this.shadowRoot.querySelector('#fraseClave').value = '';
+    this._qr = null;
   }
   _enviaCaptcha(t){
     const ref = firebase.firestore().collection('MEDICOS').doc(this._user).collection('DATOS').doc('LOGIN');
@@ -340,6 +363,7 @@ export class PageOne extends LitElement {
     creaReceta(datos)
     .then(async r => {
       this._qr = JSON.stringify(r);
+      console.log(r);
       this.shadowRoot.querySelector('#fraseClave').value = '';
     });
   }

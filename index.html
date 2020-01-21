@@ -7,12 +7,30 @@
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" href="./favicon.ico">
   <base href="/">
+
+  <!-- <link href="https://fonts.googleapis.com/css?family=Material+Icons+Outlined" rel="stylesheet"> -->
   <style>
+    @font-face {
+      font-family: 'Roboto';
+      font-style: normal;
+      font-weight: 400;
+      src: local('Roboto'), local('Roboto-Regular'), url(https://fonts.gstatic.com/s/roboto/v15/sTdaA6j0Psb920Vjv-mrzH-_kf6ByYO6CLYdB4HQE-Y.woff2) format('woff2');
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Material Icons';
+      font-style: normal;
+      font-weight: 400;
+      src: url(https://fonts.gstatic.com/s/materialiconsoutlined/v14/gok-H7zzDkdnRel8-DQ6KAXJ69wP1tGnf4ZGhUce.woff2) format('woff2');
+    }
     html, body {
       margin: 0;
       padding: 0;
-      font-family: sans-serif;
+      font-family: 'Roboto', Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
       background-color: #ededed;
+    }
+    *:focus {
+        outline: none !important;
     }
   </style>
   <script>
@@ -26,7 +44,6 @@
        navigator.serviceWorker.controller.onstatechange = function(event) {
          if (event.target.state === 'redundant') {
            console.log('Nueva version disponible');
-           //nuevo.open();
            window.location.reload(true);
          }
       };
@@ -36,8 +53,8 @@
 </head>
 <body>
   <e-receta title="eReceta NewtriLabs"></e-receta>
-
   <script type="module" src="./components/e-receta/e-receta.js"></script>
+  <script type="text/javascript" src="https://rawgit.com/schmich/instascan-builds/master/instascan.min.js"></script>
 </body>
 
 </html>

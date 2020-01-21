@@ -25,14 +25,16 @@ export class EReceta extends LitElement {
         justify-content: flex-start;
         font-size: calc(10px + 2vmin);
         color: #1a2b42;
-        max-width: 960px;
+        max-width: 100vw;
         margin: 0 auto;
       }
 
       header {
         width: 100%;
+        max-width: 1270px;
         background: #fff;
         border-bottom: 1px solid #ccc;
+        z-index: 100;
       }
 
       header ul {
@@ -69,6 +71,7 @@ export class EReceta extends LitElement {
       .app-footer {
         font-size: calc(12px + 0.5vmin);
         align-items: center;
+        padding: 36px;
       }
 
       .app-footer a {
@@ -86,20 +89,20 @@ export class EReceta extends LitElement {
 
   render() {
     return html`
-      <header>
+      <header style="${(this.page == 'pageTwo')? 'background: rgba(0,0,0,.75); border-bottom: none; max-width: 1270px' : ''}"">
         <ul>
           <li>
-            <a href="#main" class=${this.__navClass('main')} @click=${this.__onNavClicked}>
+            <a href="#main" class=${this.__navClass('main')} @click=${this.__onNavClicked} style="${(this.page == 'pageTwo')? 'color: white' : ''}">
               Inicio
             </a>
           </li>
           <li>
-            <a href="#pageOne" class=${this.__navClass('pageOne')} @click=${this.__onNavClicked}>
+            <a href="#pageOne" class=${this.__navClass('pageOne')} @click=${this.__onNavClicked} style="${(this.page == 'pageTwo')? 'color: white' : ''}">
               Generar Receta
             </a>
           </li>
           <li>
-            <a href="#pageTwo" class=${this.__navClass('pageTwo')} @click=${this.__onNavClicked}>
+            <a href="#pageTwo" class=${this.__navClass('pageTwo')} @click=${this.__onNavClicked} style="${(this.page == 'pageTwo')? 'color: white' : ''}">
               Leer Receta
             </a>
           </li>
@@ -110,7 +113,7 @@ export class EReceta extends LitElement {
         ${this._renderPage()}
       </main>
 
-      <p class="app-footer">
+      <p class="app-footer" style="display: ${(this.page == 'pageTwo')? 'none' : 'block'}">
         Hecho por <a target="_blank" rel="noopener noreferrer" href="https://newtri.cl">NewtriLabs</a>
         © ${new Date().getFullYear()}
       </p>
