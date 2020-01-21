@@ -4,6 +4,8 @@ import '@vaadin/vaadin-text-field/theme/lumo/vaadin-password-field.js';
 import '@vaadin/vaadin-text-field/theme/lumo/vaadin-text-field.js';
 import '@vaadin/vaadin-text-field/theme/lumo/vaadin-text-area.js';
 import '@vaadin/vaadin-button/theme/lumo/vaadin-button.js';
+import 'webcomponent-qr-code';
+
 import { okLogo } from './ok-logo.js';
 import { exitLogo } from './exit-logo.js';
 import { firebase } from './firebase.js';
@@ -138,6 +140,9 @@ export class PageOne extends LitElement {
       },
       _fraseClave: {
         type: String
+      },
+      _qr: {
+        type: String
       }
     };
   }
@@ -149,7 +154,7 @@ export class PageOne extends LitElement {
     this._firma = false;
     this._rutDoc = '';
     this._rutValido = false;
-    this._numSerie = 'A021426944';
+    this._numSerie = '';
     this._captcha = '';
     this._txtCaptcha = '';
     this._generaClave = false;
@@ -159,6 +164,7 @@ export class PageOne extends LitElement {
     this._key = '';
     this._fraseClave = '';
     this._receta = {};
+    this._qr = '';
   }
 
   render() {
@@ -187,7 +193,7 @@ export class PageOne extends LitElement {
       <p>(Sólo una vez. No guardamos copia de ella, por eso no puede olvidarla)</p>
       <vaadin-password-field class="texto-ancho" label="Frase Clave (No puede olvidarla. No use la misma de su email)" ?disabled=${!this._generaClave || this._key} .value="${this._passphrase}" @input="${e => this._passphrase = e.target.value}"></vaadin-password-field>      
       <vaadin-button theme="primary" @click="${(e) => this._fxGeneraFirma(this._medValido, this._serieValida, this._user, this._passphrase)}" ?disabled="${!this._passphrase || this._key}">Generar Firma</vaadin-button>
-      <h5 style="color: ${this._key? 'black':'rgba(0,0,0,.3)'}">Paso 4: Receta</h5>      
+      <h5 style="color: ${this._key? 'black':'rgba(0,0,0,.3)'}">Paso 4: Receta</h5>            
       <div id="receta">
         <vaadin-text-field class="texto" label="Nombre" ?disabled=${!this._key} id="nombrePte" @input="${e => this._receta.nombrePte = e.target.value}"></vaadin-text-field>      
         <vaadin-number-field class="dato" label="Edad" ?disabled=${!this._key} id="edadPte" @input="${e => this._receta.edadPte = e.target.value}"></vaadin-number-field>      
@@ -198,7 +204,8 @@ export class PageOne extends LitElement {
         <vaadin-password-field class="texto" label="Frase Clave" id="fraseClave" ?disabled=${!this._key} @input="${e => this._fraseClave = e.target.value}"></vaadin-password-field>      
         <vaadin-button ?disabled="${!this._fraseClave}" theme="primary" @click="${() => {this._creaReceta(this._receta, this._fraseClave); this._borraReceta()}}">Crear Receta</vaadin-button> 
         <div class="flotaIzq" style="margin-right: 1px;"></div><vaadin-button ?disabled="${!this._key}" theme="primary error" @click="${() => this._borraReceta()}">Borrar Receta</vaadin-button>          
-      </div>   
+      </div> 
+      <qr-code format="svg" .data="${this._qr}"></qr-code>  
     <div>
     `;
   }
@@ -332,7 +339,7 @@ export class PageOne extends LitElement {
     const creaReceta = firebase.functions().httpsCallable('creaReceta');
     creaReceta(datos)
     .then(async r => {
-      console.log(r);
+      this._qr = JSON.stringify(r);
       this.shadowRoot.querySelector('#fraseClave').value = '';
     });
   }
@@ -355,6 +362,7 @@ export class PageOne extends LitElement {
       this._key = '';
       this._fraseClave = '';
       this._receta = {};
+      this._qr = '';
     })
     .catch(e => console.log(e));
     
