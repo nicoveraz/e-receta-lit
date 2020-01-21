@@ -2,8 +2,6 @@ import { LitElement, html, css } from 'lit-element';
 import { classMap } from 'lit-html/directives/class-map.js';
 import { eRecetaLogo } from './e-receta-logo.js';
 import { setPassiveTouchGestures } from '@polymer/polymer/lib/utils/settings.js';
-import 'pwa-helper-components/pwa-install-button.js';
-import 'pwa-helper-components/pwa-update-available.js';
 
 import '../../page-main/page-main.js';
 import '../../page-one/page-one.js';

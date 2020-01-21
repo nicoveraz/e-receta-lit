@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="Description" content="Receta Electrónica según NewtriLabs">
-  <link rel='manifest' href='./manifest.json'>
+  <link rel="manifest" href="./manifest.json">
   <link rel="icon" href="./favicon.ico">
   <base href="/">
   <style>
@@ -20,6 +20,16 @@
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js');
       });
+    }
+
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+       navigator.serviceWorker.controller.onstatechange = function(event) {
+         if (event.target.state === 'redundant') {
+           console.log('Nueva version disponible');
+           //nuevo.open();
+           window.location.reload(true);
+         }
+      };
     }
   </script>
   <title>eReceta NewtriLabs</title>

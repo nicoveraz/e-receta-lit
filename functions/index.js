@@ -1,6 +1,13 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
-var rp = require('request-promise');
+const rp = require('request-promise');
+const pgp = require('openpgp');
+const puppeteer = require('puppeteer');
+const opts = {
+  memory: '2GB', 
+  timeoutSeconds: 180
+};
+
 admin.initializeApp();
 
 const firestoreRef = admin.firestore();
@@ -11,6 +18,11 @@ exports.validaMed = functions.https.onCall( async (data, context) => {
 	    'permission-denied'
 	  );
 	}
+	if(data.uid != context.auth.uid){
+		throw new functions.https.HttpsError(
+		  'wrong-user'
+		);
+	}
   	const rut = data.rut;
 	const dataString = functions.config().supersalud.key;
 	const url = `https://api.superdesalud.gob.cl/prestadores/v1/prestadores/${rut}.json/?auth_key=${dataString}`;
@@ -20,10 +32,11 @@ exports.validaMed = functions.https.onCall( async (data, context) => {
 	};
   var res = await rp(options)
 	.then(async resultado =>{
-		await firestoreRef.collection('MEDICOS').doc(data.uid).collection('DATOS').doc('CREDENCIALES').set({
+		await admin.auth().setCustomUserClaims(context.auth.uid, {medicoQx: resultado.prestador.codigoBusqueda == 'Médico Cirujano'});
+		await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('CREDENCIALES').set({
 			medico: resultado.prestador
 		}, {merge: true});
-		await firestoreRef.collection('MEDICOS').doc(data.uid).collection('DATOS').doc('LOGIN').set({
+		await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('LOGIN').set({
 			medico: resultado.prestador.codigoBusqueda == 'Médico Cirujano',
 			nombreMed: `${resultado.prestador.nombres} ${resultado.prestador.apellidoPaterno} ${resultado.prestador.apellidoMaterno}`
 		}, {merge: true});
@@ -32,11 +45,6 @@ exports.validaMed = functions.https.onCall( async (data, context) => {
   return res;
 });
 
-const puppeteer = require('puppeteer');
-const opts = {
-  memory: '2GB', 
-  timeoutSeconds: 180
-};
 
 async function run(datos){
 	const browser = await puppeteer.launch({
@@ -63,13 +71,17 @@ async function run(datos){
 		rut: datos.rut,
 		serie: datos.serie
 	}, {merge: true});
-	const delay = ms => new Promise(res => setTimeout(res, ms));
-	await delay(25000);
 
-	const txtCaptcha = await firestoreRef.collection('MEDICOS').doc(datos.uid).collection('DATOS').doc('LOGIN').get()
+	const delay = ms => new Promise(res => setTimeout(res, ms));
+	await delay(20000);
+
+	let txtCaptcha = await firestoreRef.collection('MEDICOS').doc(datos.uid).collection('DATOS').doc('LOGIN').get()
 	.then(async r => {
 		return await r.data().txtCaptcha;
 	});
+
+	console.log('captcha: ', txtCaptcha);
+	console.log('Datos: ', datos);
 	
 	await page.click(USERNAME_SELECTOR);
 	await page.type(USERNAME_SELECTOR, datos.rut);
@@ -82,6 +94,7 @@ async function run(datos){
 
 	await page.click(TYPE_SELECTOR);
 	await page.select(TYPE_SELECTOR, 'CEDULA');
+	console.log('Campos llenos');
 
 	let obj = null;
 
@@ -92,22 +105,13 @@ async function run(datos){
 	  let element = document.querySelector(sel);
 	  return element? element.innerHTML: null;
 	}, RESULT_SELECTOR);
-	try {
-		if(result == "Vigente" || result == "No Vigente"){
-			obj = {
-			  status: (result == "Vigente" ? true : false),
-			  message: result
-			};
-		} else {
-			throw new Error('Datos erróneos o cédula bloqueada');
-		}		
-	} catch(e){
-		obj = {
-		  status: 'ERROR',
-		  message: e.message
-		};
-	}
-	
+	txtCaptcha = null;
+	console.log('res:', result);
+	obj = {
+	  status: (result == "Vigente" ? true : false),
+	  message: result
+	};
+	console.log('obj:', obj);
 
 	await browser.close();
 
@@ -121,12 +125,115 @@ exports.validaSerie = functions.runWith(opts).https.onCall( async (datos, contex
 	  );
 	}
 	let data = await run(datos);
-	let resFirest = await firestoreRef.collection('MEDICOS').doc(datos.uid).collection('DATOS').doc('LOGIN').set({
-		txtCaptcha: firestoreRef.FieldValue.delete(),
+	console.log(data, context.auth.uid);
+	let resFirest = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('LOGIN').set({
+		ciVigente: data.status,
+		txtCaptcha: admin.firestore.FieldValue.delete()
+	}, {merge: true});
+	let resFirestCred = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('CREDENCIALES').set({
 		ciVigente: data.status
 	}, {merge: true});
-	let resFirestCred = await firestoreRef.collection('MEDICOS').doc(datos.uid).collection('DATOS').doc('CREDENCIALES').set({
-		ciVigente: data.status
-	}, {merge: true});
+	await admin.auth().getUser(context.auth.uid).then(async r => {
+		const claims = await r.customClaims;
+		claims.ciVigente = true;
+		return admin.auth().setCustomUserClaims(context.auth.uid, claims);
+	});
 	return data;
+});
+
+exports.creaFirma = functions.https.onCall(async (datos, context) => {
+	if (!(context.auth && context.auth.token)) {
+	  throw new functions.https.HttpsError(
+	    'permission-denied'
+	  );
+	}
+	if(datos.user != context.auth.uid){
+		throw new functions.https.HttpsError(
+		  'wrong-user'
+		);
+	}
+	return await admin.auth().getUser(context.auth.uid).then(async (userRecord) => {
+		console.log(userRecord.customClaims);
+		if(!!userRecord.customClaims.medicoQx && !!userRecord.customClaims.ciVigente){
+			const optionsKey = {
+	            userIds: [{ id: context.auth.uid }],
+	            curve: "curve25519",
+	            passphrase: datos.passphrase
+	        };
+
+	        let privkey = null;
+	        let pubkey = null;
+	        let revocationCertificate = null;
+
+	        return pgp.generateKey(optionsKey).then(async (key) => {
+	          privkey = key.privateKeyArmored;
+	          pubkey = key.publicKeyArmored;
+	          revocationCertificate = key.revocationCertificate;
+	        })
+	        .then(async () => {
+	        	let prK = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('CREDENCIALES').set({
+	        		fechaClave: admin.firestore.FieldValue.serverTimestamp(),
+	        		clavePrivada: privkey,
+	        		clavePublica: pubkey
+	        	}, {merge: true});
+	        	let puK = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('PUBKEY').set({
+	        		fechaClave: admin.firestore.FieldValue.serverTimestamp(),
+	        		clavePublica: pubkey
+	        	}, {merge: true});
+				return 'CLAVES OK';
+	        })
+	        .catch(function(e){
+	          console.log(e);
+	          return e;
+	        });
+		} else {
+			return 'CREDENCIALES INCOMPLETAS';
+		}
+	});
+});
+
+exports.creaReceta = functions.https.onCall(async (datos, context) => {
+	if (!(context.auth && context.auth.token)) {
+	  throw new functions.https.HttpsError(
+	    'permission-denied'
+	  );
+	}
+	if(datos.user != context.auth.uid){
+		throw new functions.https.HttpsError(
+		  'wrong-user'
+		);
+	}
+	const data = datos;
+	return await admin.auth().getUser(context.auth.uid).then(async (userRecord) => {
+		if(!!userRecord.customClaims.medicoQx && !!userRecord.customClaims.ciVigente){
+			let qrData;
+
+			const pass = data.pass;
+			const receta = data.receta; 
+			let privK = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('CREDENCIALES').get()
+			.then(async r => {
+				return await r.data().clavePrivada;
+			});
+			let pubK = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('CREDENCIALES').get()
+			.then(async r => {
+				return await r.data().clavePublica;
+			});
+
+			let privKeyObj = (await pgp.key.readArmored(privK)).keys[0];
+			await privKeyObj.decrypt(pass);
+
+			const options = {
+			    message: pgp.message.fromText(JSON.stringify({u: context.auth.uid, n: receta.nombrePte, e: receta.edadPte, d: receta.direccionPte, r: receta.rutPte, f: new Date().toLocaleDateString(), rp: receta.rpPte})),
+			    publicKeys: (await pgp.key.readArmored(pubK)).keys,
+			    privateKeys: [privKeyObj]
+			};
+
+			return pgp.encrypt(options).then(async ciphertext => {
+			    qrData = `{id: ${context.auth.uid}, data: ${await ciphertext.data}}`;
+			    return qrData;
+			});
+		} else {
+			return 'CREDENCIALES INCOMPLETAS';
+		}
+	});
 });

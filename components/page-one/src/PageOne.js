@@ -21,6 +21,8 @@ export class PageOne extends LitElement {
       #eReceta {
         background-color: white;
         padding: 24px;
+        height: auto;
+        overflow: auto;
         border-radius: 4px;
         display: block;
       }
@@ -28,6 +30,7 @@ export class PageOne extends LitElement {
         font-weight: 300;
         font-size: 50%;
         margin-top: -24px;
+        max-width: 640px;
       }
       vaadin-number-field, vaadin-text-field{
         width: 240px;
@@ -37,7 +40,7 @@ export class PageOne extends LitElement {
         width: 486px;
       }
       .texto-captcha {
-        width: 351px;
+        width: 276px;
       }
       #receta {
         width: 640px;
@@ -61,22 +64,27 @@ export class PageOne extends LitElement {
         max-width: 95vw;
       }
       .imagen {
-        height: 36px;
-        width: 129px;
+        width:204px;
+        height:57px;
         vertical-align: bottom;
         margin-bottom: 5px;
         display: inline-block;
         background-color: rgba(0,0,0,.035);
       }
       .imagen > img {
-        width:129px;
-        height:36px;
+        width:204px;
+        height:57px;
       }
       svg{
         height: 24px;
         width: 24px;
         display: inline-block;
         vertical-align: bottom;
+      }
+      .flotaIzq {
+        display: inline-block;
+        width: calc(640px - 130px);
+        max-width: 70vw; 
       }
     `;
   }
@@ -118,6 +126,18 @@ export class PageOne extends LitElement {
       },
       _captEnviado: {
         type: Boolean
+      },
+      _passphrase: {
+        type: String
+      },
+      _key: {
+        type: Boolean
+      },
+      _receta: {
+        type: Object
+      },
+      _fraseClave: {
+        type: String
       }
     };
   }
@@ -135,20 +155,24 @@ export class PageOne extends LitElement {
     this._generaClave = false;
     this._nombreMed = '';
     this._captEnviado = false;
+    this._passphrase = '';
+    this._key = '';
+    this._fraseClave = '';
+    this._receta = {};
   }
 
   render() {
     return html`
     <div id="eReceta">
-      <vaadin-button theme="icon primary error" ?disabled=${!this._user} style="float: right" @click="${() => this._salir()}"><icon slot="suffix">${exitLogo}</icon></vaadin-button>
+      <vaadin-button theme="icon primary error" ?disabled=${!this._user} style="float: right" @click="${() => this._salir()}" aria-label="Salir"><icon slot="suffix">${exitLogo}</icon></vaadin-button>
       <h5>Paso 1: Validar cuenta de correo electrónico ${this._user? okLogo : ''}</h5>
       <p>(Puede ser cualquiera, con fines de prueba por ahora sólo Gmail)</p>
       <vaadin-button theme="primary" @click="${() => this._signIn()}" ?disabled=${this._user}>Ingresar con Google</vaadin-button>
       <h5 style="color: ${this._user? 'black':'rgba(0,0,0,.3)'}">Paso 2: Validar Médico ${this._generaClave? okLogo : ''}</h5>
-      <p>(Sólo una vez: ingresar RUT y número de serie, con ello se obtiene registro Superintendencia de Salud)</p>
-      <vaadin-text-field clear-button-visible id="rutDoc" error-message="Rut inválido" label="RUT" ?disabled=${!this._user || this._generaClave || this._captEnviado} .value="${this._rutDoc}" @input="${(e) => {e.target.value = `${e.target.value === '-'? e.target.value.replace('-', '') : e.target.value.split('').pop() != '-'? e.target.value.replace('-','').slice(0, -1) + '-' + e.target.value.slice(-1): e.target.value.replace('-','')}`; this._rutDoc = e.target.value; console.log(this._rutDoc); this._validaRut(e.target.value)}}"></vaadin-text-field>      
+      <p>(Sólo una vez: ingresar RUT y número de serie, con ello se obtiene registro Superintendencia de Salud, para validar el RUT es necesario completar, antes de 20 segundos, el texto del CAPTCHA)</p>
+      <vaadin-text-field clear-button-visible id="rutDoc" error-message="Rut inválido" label="RUT" ?disabled=${!this._user || this._generaClave || this._captEnviado} .value="${this._rutDoc}" @input="${(e) => {e.target.value = `${e.target.value === '-'? e.target.value.replace('-', '') : e.target.value.split('').pop() != '-'? e.target.value.replace('-','').slice(0, -1) + '-' + e.target.value.slice(-1): e.target.value.replace('-','')}`; this._rutDoc = e.target.value; this._validaRut(e.target.value)}}"></vaadin-text-field>      
       <vaadin-text-field label="Nº de Serie o Documento (sin puntos)" .value="${this._numSerie}" ?disabled=${!this._rutValido  || this._generaClave || this._captEnviado} @input="${e => this._numSerie = e.target.value}"></vaadin-text-field>      
-      <vaadin-button ?disabled="${!this._rutDoc || !this._numSerie || this._generaClave || this._captEnviado}" @click="${(e) => this._validaMed(this._rutDoc)}" theme="primary">Validar</vaadin-button><br>   
+      <vaadin-button ?disabled="${!this._rutDoc || !this._numSerie || this._generaClave || this._captEnviado}" @click="${(e) => this._validaMed(this._user, this._rutDoc, this._numSerie)}" theme="primary">Validar</vaadin-button><br>   
       <div>
         <div class="imagen">
           <img ?hidden=${!this._captcha} src="data:image/png;base64,${this._captcha}">
@@ -159,19 +183,21 @@ export class PageOne extends LitElement {
       <vaadin-text-field label="Estado Cédula Identidad" readonly .value="${(this._serieValida === true)? 'Cédula de Identidad Vigente': (this._serieValida === false)? 'No Vigente' : (this._serieValida === 'ERROR')? 'Error' : 'Pendiente'}" ?disabled=${!this._user}></vaadin-text-field>       
       <vaadin-text-field label="Registro Superintendencia" .value="${(this._medValido === true)? 'Médico Cirujano': (this._medValido === true)? 'No Registrado' : 'Pendiente'}" readonly ?disabled=${!this._user}></vaadin-text-field><br>      
       <vaadin-text-field label="Nombre"  class="texto-ancho" .value="${this._nombreMed}" readonly ?disabled=${!this._user}></vaadin-text-field>       
-      <h5 style="color: ${this._generaClave? 'black':'rgba(0,0,0,.3)'}">Paso 3: Llave Pública y Privada</h5>
-      <p>(Sólo una vez)</p>
-      <vaadin-password-field class="texto-ancho" label="Frase Clave (No puede olvidarla. No use la misma de su email)" ?disabled=${!this._generaClave}></vaadin-password-field>      
-      <vaadin-button theme="primary" ?disabled=${!this._generaClave}>Generar Firma</vaadin-button>
-      <h5 style="color: ${this._firma? 'black':'rgba(0,0,0,.3)'}">Paso 4: Receta</h5>      
+      <h5 style="color: ${this._generaClave? 'black':'rgba(0,0,0,.3)'}">Paso 3: Llave Pública y Privada ${this._key? okLogo : ''}</h5>
+      <p>(Sólo una vez. No guardamos copia de ella, por eso no puede olvidarla)</p>
+      <vaadin-password-field class="texto-ancho" label="Frase Clave (No puede olvidarla. No use la misma de su email)" ?disabled=${!this._generaClave || this._key} .value="${this._passphrase}" @input="${e => this._passphrase = e.target.value}"></vaadin-password-field>      
+      <vaadin-button theme="primary" @click="${(e) => this._fxGeneraFirma(this._medValido, this._serieValida, this._user, this._passphrase)}" ?disabled="${!this._passphrase || this._key}">Generar Firma</vaadin-button>
+      <h5 style="color: ${this._key? 'black':'rgba(0,0,0,.3)'}">Paso 4: Receta</h5>      
       <div id="receta">
-        <vaadin-text-field class="texto" label="Nombre" ?disabled=${!this._firma}></vaadin-text-field>      
-        <vaadin-number-field class="dato" label="Edad" ?disabled=${!this._firma}></vaadin-number-field>      
-        <vaadin-text-field class="texto" label="Dirección" ?disabled=${!this._firma}></vaadin-text-field>      
-        <vaadin-text-field class="dato" label="Fecha" readonly ?disabled=${!this._firma} value="${new Date().toLocaleDateString()}"></vaadin-text-field>
-        <vaadin-text-area class="rp" label="Rp." ?disabled=${!this._firma}></vaadin-text-area> 
-        <vaadin-password-field class="texto" label="Frase Clave" ?disabled=${!this._firma}></vaadin-password-field>      
-        <vaadin-button disabled theme="primary">Crear Receta</vaadin-button>    
+        <vaadin-text-field class="texto" label="Nombre" ?disabled=${!this._key} id="nombrePte" @input="${e => this._receta.nombrePte = e.target.value}"></vaadin-text-field>      
+        <vaadin-number-field class="dato" label="Edad" ?disabled=${!this._key} id="edadPte" @input="${e => this._receta.edadPte = e.target.value}"></vaadin-number-field>      
+        <vaadin-text-field class="texto" label="Dirección" ?disabled=${!this._key} id="direccionPte" @input="${e => this._receta.direccionPte = e.target.value}"></vaadin-text-field>      
+        <vaadin-text-field class="dato" label="RUT" error-message="Rut inválido" ?disabled=${!this._key} id="rutPte" @input="${e => {e.target.value = `${e.target.value === '-'? e.target.value.replace('-', '') : e.target.value.split('').pop() != '-'? e.target.value.replace('-','').slice(0, -1) + '-' + e.target.value.slice(-1): e.target.value.replace('-','')}`; this._receta.rutPte = e.target.value; this._validaRutPte(e.target.value)}}"></vaadin-text-field>      
+        <div class="flotaIzq" style="margin-right: 8px;"></div><vaadin-text-field class="dato" label="Fecha" readonly ?disabled=${!this._key} value="${new Date().toLocaleDateString()}"></vaadin-text-field>
+        <vaadin-text-area class="rp" label="Rp." ?disabled=${!this._key} id="rpPte" @input="${e => this._receta.rpPte = e.target.value}"></vaadin-text-area> 
+        <vaadin-password-field class="texto" label="Frase Clave" id="fraseClave" ?disabled=${!this._key} @input="${e => this._fraseClave = e.target.value}"></vaadin-password-field>      
+        <vaadin-button ?disabled="${!this._fraseClave}" theme="primary" @click="${() => {this._creaReceta(this._receta, this._fraseClave); this._borraReceta()}}">Crear Receta</vaadin-button> 
+        <div class="flotaIzq" style="margin-right: 1px;"></div><vaadin-button ?disabled="${!this._key}" theme="primary error" @click="${() => this._borraReceta()}">Borrar Receta</vaadin-button>          
       </div>   
     <div>
     `;
@@ -180,14 +206,22 @@ export class PageOne extends LitElement {
     firebase.auth().onAuthStateChanged((user) => {
       if (user) {
         this._user = user.uid;
-        const ref = firebase.firestore().collection('MEDICOS').doc(this._user).collection('DATOS').doc('LOGIN').onSnapshot(r => {
-          this._rutDoc = r.data().rut? r.data().rut : '';
-          this._medValido = r.data().medico? r.data().medico : '';
-          this._serieValida = r.data().ciVigente? r.data().ciVigente : '';
-          this._numSerie = r.data().serie? r.data().serie : '';
-          this._captcha = r.data().captcha? r.data().captcha : ''; 
-          this._nombreMed = r.data().nombreMed? r.data().nombreMed : '';         
+        const ref = firebase.firestore().collection('MEDICOS').doc(this._user).collection('DATOS').doc('LOGIN').onSnapshot(async r => {
+          const data = await r.data();
+          this._rutDoc = data.rut? data.rut : '';
+          this._medValido = data.medico? data.medico : '';
+          this._serieValida = data.ciVigente? data.ciVigente : '';
+          this._numSerie = data.serie? data.serie : '';
+          this._captcha = data.captcha? data.captcha : ''; 
+          this._nombreMed = data.nombreMed? data.nombreMed : '';         
         });
+        const refKey = firebase.firestore().collection('MEDICOS').doc(this._user).collection('DATOS').doc('PUBKEY').onSnapshot(async r => {
+          if(r.exists){
+            const data = await r.data();
+            this._key = !!data.clavePublica;
+          }         
+        });
+
       }
     });
   }
@@ -195,6 +229,14 @@ export class PageOne extends LitElement {
     if(this._medValido && this._serieValida){
       this._generaClave = true;
     }   
+  }
+  _borraReceta(){
+    this.shadowRoot.querySelector('#nombrePte').value = '';
+    this.shadowRoot.querySelector('#rutPte').value = '';
+    this.shadowRoot.querySelector('#direccionPte').value = '';
+    this.shadowRoot.querySelector('#edadPte').value = '';
+    this.shadowRoot.querySelector('#rpPte').value = '';
+    this.shadowRoot.querySelector('#fraseClave').value = '';
   }
   _enviaCaptcha(t){
     const ref = firebase.firestore().collection('MEDICOS').doc(this._user).collection('DATOS').doc('LOGIN');
@@ -231,17 +273,43 @@ export class PageOne extends LitElement {
         }
       };
     }
-  _validaMed(r){
-    var validaMed = firebase.functions().httpsCallable('validaMed');
-    var validaRutSerie = firebase.functions().httpsCallable('validaSerie');
-    var rut = r.substring(0, r.indexOf('-'));
+  _validaRutPte(e){
+      this.shadowRoot.querySelector('#rutPte').checkValidity = () => {     
+        if (!/^[0-9]+[-|‐]{1}[0-9kK]{1}$/.test(e)){
+            this.rutValido = false;
+            return false;
+        }
+        var tmp = e.split('-');
+        var digv = tmp[1];
+        var T = tmp[0];
+        if (digv == 'K') digv = 'k';
+        var M = 0,
+            S = 1;
+        for (; T; T = Math.floor(T / 10))
+            S = (S + T % 10 * (9 - M++ % 6)) % 11;
+        var dv = S ? S - 1 : 'k';
+        if(dv == digv){
+          this._rutValido = true;
+          return true;
+        }else{
+          this._rutValido = false;
+          return false;
+        }
+      };
+    }
+  _validaMed(u, r, s){
+    if(!u || !r || !s){
+      alert('Datos incompletos!');
+      return;
+    }
+    const validaMed = firebase.functions().httpsCallable('validaMed');
+    const validaRutSerie = firebase.functions().httpsCallable('validaSerie');
+    const rut = r.substring(0, r.indexOf('-'));
     validaMed({uid: this._user, rut: rut})
-    .then(r => {
-      console.log(r);
-      this._medValido = (r.data.prestador.codigoBusqueda == "Médico Cirujano");
-      validaRutSerie({uid: this._user, rut: this._rutDoc, serie: this._numSerie})
+    .then(res => {
+      this._medValido = (res.data.prestador.codigoBusqueda == "Médico Cirujano");
+      validaRutSerie({uid: u, rut: r, serie: s})
       .then(d => {
-        console.log(d);
         this._serieValida = (d.data.message == 'Vigente');
       });
     })
@@ -249,15 +317,28 @@ export class PageOne extends LitElement {
       console.log(error);
     });
   }
+  _fxGeneraFirma(m, s, u, p){
+    if(!m || !s || !u || !p){
+      throw new Error('Datos incompletos');
+    }
+    const creaFirma = firebase.functions().httpsCallable('creaFirma');
+    creaFirma({user: u, passphrase: p})
+    .then(async r => {
+      console.log(r);
+    });
+  }
+  _creaReceta(r, p){
+    const datos = {receta: r, pass: p, user: this._user};
+    const creaReceta = firebase.functions().httpsCallable('creaReceta');
+    creaReceta(datos)
+    .then(async r => {
+      console.log(r);
+      this.shadowRoot.querySelector('#fraseClave').value = '';
+    });
+  }
   _signIn() {
     var provider = new firebase.auth.GoogleAuthProvider();
-    firebase.auth().signInWithPopup(provider)
-    .then(u => {
-      firebase.firestore().collection('MEDICOS').doc(u.uid).collection('DATOS').doc('LOGIN').set({
-        email: u.email,
-        uid: u.uid
-      },{merge: true});
-    });
+    firebase.auth().signInWithPopup(provider);
   }
   _salir(){
     firebase.auth().signOut()
@@ -271,6 +352,9 @@ export class PageOne extends LitElement {
       this._nombreMed = '';
       this._generaClave = '';
       this._captEnviado = '';
+      this._key = '';
+      this._fraseClave = '';
+      this._receta = {};
     })
     .catch(e => console.log(e));
     
