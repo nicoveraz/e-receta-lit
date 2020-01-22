@@ -191,7 +191,7 @@ export class PageOne extends LitElement {
     <div id="eReceta">
       <mwc-icon-button ?disabled=${!this._user} icon="close" style="float: right" @click="${() => this._salir()}" aria-label="Salir"></mwc-icon-button>
       <h5>Paso 1: Validar cuenta de correo electrónico ${this._user? okLogo : ''}</h5>
-      <p>(Puede ser cualquiera, con fines de prueba por ahora sólo Gmail)</p>
+      <p>(Puede ser cualquiera, con fines de prueba por ahora sólo Gmail. Único paso necesario por ahora para acceder al lector QR)</p>
       <vaadin-button theme="primary" @click="${() => this._signIn()}" ?disabled=${this._user}>Ingresar con Google</vaadin-button>
       <h5 style="color: ${this._user? 'black':'rgba(0,0,0,.3)'}">Paso 2: Validar Médico ${this._generaClave? okLogo : ''}</h5>
       <p>(Sólo una vez: ingresar RUT y número de serie, con ello se obtiene registro Superintendencia de Salud, para validar el RUT es necesario completar, antes de 20 segundos, el texto del CAPTCHA)</p>
@@ -221,7 +221,7 @@ export class PageOne extends LitElement {
         <div class="flotaIzq" style="margin-right: 8px;"></div><vaadin-text-field class="dato" label="Fecha" readonly ?disabled=${!this._key} value="${new Date().toLocaleDateString()}"></vaadin-text-field>
         <vaadin-text-area class="rp" label="Rp." ?disabled=${!this._key} id="rpPte" @input="${e => this._receta.rpPte = e.target.value}"></vaadin-text-area> 
         <vaadin-password-field class="texto" label="Frase Clave" id="fraseClave" ?disabled=${!this._key} @input="${e => this._fraseClave = e.target.value}"></vaadin-password-field>      
-        <vaadin-button ?disabled="${!this._fraseClave}" theme="primary" @click="${() => {this._creaReceta(this._receta, this._fraseClave); this._borraReceta()}}">Crear Receta</vaadin-button> 
+        <vaadin-button ?disabled="${!this._fraseClave}" theme="primary" @click="${() => {this._creaReceta(this._receta, this._fraseClave);}}">Crear Receta</vaadin-button> 
         <div class="flotaIzq" style="margin-right: 1px;"></div><vaadin-button ?disabled="${!this._key}" theme="primary error" @click="${() => this._borraReceta()}">Borrar Receta</vaadin-button>          
       </div>
       <h5 style="color: ${this._qr? 'black':'rgba(0,0,0,.3)'}">Resultado: QR Receta ${this._qr? okLogo : ''}</h5> 
@@ -266,6 +266,7 @@ export class PageOne extends LitElement {
     this.shadowRoot.querySelector('#edadPte').value = '';
     this.shadowRoot.querySelector('#rpPte').value = '';
     this.shadowRoot.querySelector('#fraseClave').value = '';
+    this._fraseClave = '';
     this._qr = null;
   }
   _enviaCaptcha(t){
@@ -362,9 +363,13 @@ export class PageOne extends LitElement {
     const creaReceta = firebase.functions().httpsCallable('creaReceta');
     creaReceta(datos)
     .then(async r => {
-      this._qr = JSON.stringify(r);
+      this._qr = r.data;
       console.log(r);
       this.shadowRoot.querySelector('#fraseClave').value = '';
+      this._fraseClave = '';
+    }).catch(e => {
+      console.log(e);
+      alert('Error, no se pudo generar receta');
     });
   }
   _signIn() {

@@ -178,7 +178,7 @@ exports.creaFirma = functions.https.onCall(async (datos, context) => {
 	        	}, {merge: true});
 	        	let puK = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('PUBKEY').set({
 	        		fechaClave: admin.firestore.FieldValue.serverTimestamp(),
-	        		clavePublica: pubkey
+	        		clavePublica: true
 	        	}, {merge: true});
 				return 'CLAVES OK';
 	        })
@@ -229,11 +229,35 @@ exports.creaReceta = functions.https.onCall(async (datos, context) => {
 			};
 
 			return pgp.encrypt(options).then(async ciphertext => {
-			    qrData = `{id: ${context.auth.uid}, data: ${await ciphertext.data}}`;
+			    qrData = `${context.auth.uid}${await ciphertext.data}`;
 			    return qrData;
+			}).catch(e => {
+				console.log(e);
+				return e;
 			});
 		} else {
 			return 'CREDENCIALES INCOMPLETAS';
 		}
 	});
+});
+
+exports.desencriptaQR = functions.https.onCall(async (datos, context) => {
+	if (!(context.auth && context.auth.token)) {
+	  throw new functions.https.HttpsError(
+	    'permission-denied'
+	  );
+	}
+	if(datos.user != context.auth.uid){
+		throw new functions.https.HttpsError(
+		  'wrong-user'
+		);
+	}
+	const data = datos.qr.text;
+	console.log(data);
+	const id = data.split('-----', 1);
+	console.log(id);
+	const msg = data.substring(data.indexOf('-----'));
+	console.log(msg);
+
+	return data;
 });

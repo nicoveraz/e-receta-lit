@@ -84,7 +84,7 @@ export class EReceta extends LitElement {
   constructor() {
     super();
     setPassiveTouchGestures(true);
-    this.page = 'pageOne';
+    this.page = 'main';
   }
 
   render() {
