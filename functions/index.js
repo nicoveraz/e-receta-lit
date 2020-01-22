@@ -210,21 +210,23 @@ exports.creaReceta = functions.https.onCall(async (datos, context) => {
 
 			const pass = data.pass;
 			const receta = data.receta; 
-			let privK = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('CREDENCIALES').get()
+
+			let firma = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('CREDENCIALES').get()
 			.then(async r => {
 				return await r.data().clavePrivada;
 			});
-			let pubK = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('CREDENCIALES').get()
+
+			let key = await firestoreRef.collection('APP').doc('CRED').get()
 			.then(async r => {
-				return await r.data().clavePublica;
+				return await r.data().pubK;
 			});
 
-			let privKeyObj = (await pgp.key.readArmored(privK)).keys[0];
+			let privKeyObj = (await pgp.key.readArmored(firma)).keys[0];
 			await privKeyObj.decrypt(pass);
 
 			const options = {
 			    message: pgp.message.fromText(JSON.stringify({u: context.auth.uid, n: receta.nombrePte, e: receta.edadPte, d: receta.direccionPte, r: receta.rutPte, f: new Date().toLocaleDateString(), rp: receta.rpPte})),
-			    publicKeys: (await pgp.key.readArmored(pubK)).keys,
+			    publicKeys: (await pgp.key.readArmored(key)).keys,
 			    privateKeys: [privKeyObj]
 			};
 
@@ -253,11 +255,34 @@ exports.desencriptaQR = functions.https.onCall(async (datos, context) => {
 		);
 	}
 	const data = datos.qr.text;
-	console.log(data);
-	const id = data.split('-----', 1);
+	const id = data.split('-----', 1)[0];
 	console.log(id);
 	const msg = data.substring(data.indexOf('-----'));
 	console.log(msg);
 
-	return data;
+	let pubK = await firestoreRef.collection('MEDICOS').doc(id).collection('DATOS').doc('CREDENCIALES').get()
+	.then(async r => {
+		return await r.data().clavePublica;
+	});
+
+	let dec = await firestoreRef.collection('APP').doc('CRED').get()
+	.then(async r => {
+		return await r.data();
+	});
+
+	let privKeyObj = (await pgp.key.readArmored(dec.firma)).keys[0];
+	await privKeyObj.decrypt(dec.pf);
+
+	const options = {
+	    message: await openpgp.message.readArmored(msg),    // parse armored message
+	    publicKeys: (await openpgp.key.readArmored(pubK)).keys, // for verification (optional)
+	    privateKeys: [privKeyObj]                                 // for decryption
+	}
+
+	openpgp.decrypt(options).then(plaintext => {
+	    console.log(plaintext.data)
+	    return plaintext.data // 'Hello, World!'
+	})
+
+	return;
 });
