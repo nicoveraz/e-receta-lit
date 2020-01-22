@@ -1,7 +1,7 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const rp = require('request-promise');
-const pgp = require('openpgp');
+var pgp = require('openpgp');
 const puppeteer = require('puppeteer');
 const opts = {
   memory: '2GB', 
@@ -180,7 +180,7 @@ exports.creaFirma = functions.https.onCall(async (datos, context) => {
 	        		fechaClave: admin.firestore.FieldValue.serverTimestamp(),
 	        		clavePublica: true
 	        	}, {merge: true});
-				return 'CLAVES OK';
+	        	return 'CLAVES OK';
 	        })
 	        .catch(function(e){
 	          console.log(e);
@@ -206,7 +206,7 @@ exports.creaReceta = functions.https.onCall(async (datos, context) => {
 	const data = datos;
 	return await admin.auth().getUser(context.auth.uid).then(async (userRecord) => {
 		if(!!userRecord.customClaims.medicoQx && !!userRecord.customClaims.ciVigente){
-			let qrData;
+			let qrFirmado, qrData;
 
 			const pass = data.pass;
 			const receta = data.receta; 
@@ -215,27 +215,39 @@ exports.creaReceta = functions.https.onCall(async (datos, context) => {
 			.then(async r => {
 				return await r.data().clavePrivada;
 			});
+			// let apkey = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('CREDENCIALES').get()
+			// .then(async r => {
+			// 	return await r.data().clavePublica;
+			// });
 
-			let key = await firestoreRef.collection('APP').doc('CRED').get()
+			let apkey = await firestoreRef.collection('APP').doc('CRED').get()
 			.then(async r => {
-				return await r.data().pubK;
-			});
+				const pubK = await r.data().clavePublica;
+				const pubKR = await pgp.key.readArmored(pubK);
+				return pubKR.keys;
+			}).catch(e => console.log('ERROR apkey: ', e));
 
 			let privKeyObj = (await pgp.key.readArmored(firma)).keys[0];
 			await privKeyObj.decrypt(pass);
 
-			const options = {
-			    message: pgp.message.fromText(JSON.stringify({u: context.auth.uid, n: receta.nombrePte, e: receta.edadPte, d: receta.direccionPte, r: receta.rutPte, f: new Date().toLocaleDateString(), rp: receta.rpPte})),
-			    publicKeys: (await pgp.key.readArmored(key)).keys,
+			const optionsSign = {
+			    message: pgp.cleartext.fromText(JSON.stringify({u: context.auth.uid, n: receta.nombrePte, e: receta.edadPte, d: receta.direccionPte, r: receta.rutPte, f: new Date().toLocaleDateString(), rp: receta.rpPte})),
 			    privateKeys: [privKeyObj]
-			};
+			};			
 
-			return pgp.encrypt(options).then(async ciphertext => {
-			    qrData = `${context.auth.uid}${await ciphertext.data}`;
-			    return qrData;
+			let mjeFirmado = await pgp.sign(optionsSign).then(async signed => {
+			    return await signed.data;	    
 			}).catch(e => {
 				console.log(e);
 				return e;
+			});
+			const options = {
+			    message: pgp.message.fromText(`${context.auth.uid}${mjeFirmado}`),
+			    publicKeys: apkey
+			};
+			return pgp.encrypt(options).then(async ciphertext => {
+			    qrData = await ciphertext.data; 
+			    return qrData;
 			});
 		} else {
 			return 'CREDENCIALES INCOMPLETAS';
@@ -243,7 +255,7 @@ exports.creaReceta = functions.https.onCall(async (datos, context) => {
 	});
 });
 
-exports.desencriptaQR = functions.https.onCall(async (datos, context) => {
+exports.leeQR = functions.https.onCall(async (datos, context) => {
 	if (!(context.auth && context.auth.token)) {
 	  throw new functions.https.HttpsError(
 	    'permission-denied'
@@ -254,35 +266,49 @@ exports.desencriptaQR = functions.https.onCall(async (datos, context) => {
 		  'wrong-user'
 		);
 	}
-	const data = datos.qr.text;
-	const id = data.split('-----', 1)[0];
-	console.log(id);
-	const msg = data.substring(data.indexOf('-----'));
-	console.log(msg);
+	const msg = datos.qr.text;
 
-	let pubK = await firestoreRef.collection('MEDICOS').doc(id).collection('DATOS').doc('CREDENCIALES').get()
+	let firma = await firestoreRef.collection('APP').doc('CRED').get()
 	.then(async r => {
-		return await r.data().clavePublica;
+		return await r.data().clavePrivada;
+	});
+	let pPh = await firestoreRef.collection('APP').doc('CRED').get()
+	.then(async r => {
+		return await r.data().passPhrase;
 	});
 
-	let dec = await firestoreRef.collection('APP').doc('CRED').get()
-	.then(async r => {
-		return await r.data();
+	let prKObj = (await pgp.key.readArmored(firma)).keys[0];
+	await prKObj.decrypt(pPh);
+
+	const options = { 
+		message: (await pgp.message.readArmored(msg)), 
+		privateKeys: [prKObj]
+	};
+
+	let mjeDesencripado = await pgp.decrypt(options).then( async plaintext => {
+	    return await plaintext.data;
 	});
 
-	let privKeyObj = (await pgp.key.readArmored(dec.firma)).keys[0];
-	await privKeyObj.decrypt(dec.pf);
+	const id = mjeDesencripado.split('-----', 1)[0];
+	const mjeFirmado = mjeDesencripado.substring(mjeDesencripado.indexOf('-----'));
 
-	const options = {
-	    message: await openpgp.message.readArmored(msg),    // parse armored message
-	    publicKeys: (await openpgp.key.readArmored(pubK)).keys, // for verification (optional)
-	    privateKeys: [privKeyObj]                                 // for decryption
-	}
+	let pubKM = await firestoreRef.collection('MEDICOS').doc(id).collection('DATOS').doc('CREDENCIALES').get()
+	.then(async r => {
+		const pubK = await r.data().clavePublica;
+		const pubKR = await pgp.key.readArmored(pubK);
+		return await pubKR.keys;
+	}).catch(e => console.log('ERROR pubK: ', e));
 
-	openpgp.decrypt(options).then(plaintext => {
-	    console.log(plaintext.data)
-	    return plaintext.data // 'Hello, World!'
-	})
+	optionsVerificaFirma = {
+	    message: (await pgp.cleartext.readArmored(mjeFirmado)), // parse armored message
+	    publicKeys: pubKM // for verification
+	};
 
-	return;
+	return pgp.verify(optionsVerificaFirma).then(async (verified) => {
+		validity = await verified.signatures[0].valid; // true
+		if (validity) {
+			console.log('signed by key id ' + verified.signatures[0].keyid.toHex());
+			console.log(verified);
+		}
+	});
 });

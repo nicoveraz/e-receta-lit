@@ -163,7 +163,7 @@ export class PageTwo extends LitElement {
   updated(changedProps){
     if(changedProps.has('_resQR')){
       if(!!this._resQR){
-        const desencriptaQR = firebase.functions().httpsCallable('desencriptaQR');
+        const desencriptaQR = firebase.functions().httpsCallable('leeQR');
         desencriptaQR({user: this._user, qr: this._resQR})
         .then(r => {
           console.log(r);

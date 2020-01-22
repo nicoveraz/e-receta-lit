@@ -356,6 +356,7 @@ export class PageOne extends LitElement {
     creaFirma({user: u, passphrase: p})
     .then(async r => {
       console.log(r);
+      this._passphrase = null;
     });
   }
   _creaReceta(r, p){
