@@ -107,6 +107,15 @@ export class PageTwo extends LitElement {
       },
       _toggle: {
         type: Boolean
+      },
+      _receta: {
+        type: Object
+      },
+      _nombreMed: {
+        type: String
+      },
+      _rutMed: {
+        type: String
       }
     };
   }
@@ -115,8 +124,9 @@ export class PageTwo extends LitElement {
     super();
     this._selectCamara = false;
     this._camaras = [];
-    this._dialogQR = false;
+    this._dialogQR = true;
     this._toggle = false;
+    this._receta = '';
     this._boundDialogRenderer = this.dialogRenderer.bind(this);
   }
 
@@ -152,7 +162,6 @@ export class PageTwo extends LitElement {
                 this._camaras.push(e);
               });
             }
-            console.log(this._camaras);
             this._escaneaQR(); 
         }).catch(err => console.error(err));
       }
@@ -163,10 +172,24 @@ export class PageTwo extends LitElement {
   updated(changedProps){
     if(changedProps.has('_resQR')){
       if(!!this._resQR){
-        const desencriptaQR = firebase.functions().httpsCallable('leeQR');
+        const desencriptaQR = firebase.functions().httpsCallable('procesaQR');
         desencriptaQR({user: this._user, qr: this._resQR})
         .then(r => {
-          console.log(r);
+          if(r.data == 'no verificado'){
+            alert('QR no verificado, receta inválida');
+          } else if(r.data == 'vendida'){
+            alert('Receta ya vendida');
+          } else {
+            this._receta = JSON.parse(r.data);
+            const ref = firebase.firestore().collection('MEDICOS').doc(this._user).collection('DATOS').doc('PUBKEY').get()
+            .then(async r => {
+              const datos = r.data();
+              this._rutMed = await datos.rut;
+              this._nombreMed = await datos.nombreMed;
+            }).then(() => {
+              this._dialogQR = true;
+            });
+          }
         });
       }
     }
@@ -181,7 +204,6 @@ export class PageTwo extends LitElement {
     }
     codeReader.reset();
     (this._camaras[0].deviceId == this._selectedDeviceId)? (this._selectedDeviceId = this._camaras[1].deviceId) : (this._selectedDeviceId = this._camaras[0].deviceId);
-    console.log(this._selectedDeviceId);
     this._escaneaQR();
   }
   _escaneaQR(){
@@ -193,31 +215,20 @@ export class PageTwo extends LitElement {
       if (result) {
         // properly decoded qr code
         this._resQR = result;
-        this._dialogQR = true;
         codeReader.reset();
       }
 
       if (err) {
-        // As long as this error belongs into one of the following categories
-        // the code reader is going to continue as excepted. Any other error
-        // will stop the decoding loop.
-        //
-        // Excepted Exceptions:
-        //
-        //  - NotFoundException
-        //  - ChecksumException
-        //  - FormatException
-
         if (err instanceof ZXing.NotFoundException) {
-          console.log('No QR code found.')
+          console.log('No se encontró QR');
         }
 
         if (err instanceof ZXing.ChecksumException) {
-          console.log('A code was found, but it\'s read value was not valid.')
+          console.log('Se encontró un QR, pero el valor no es válido');
         }
 
         if (err instanceof ZXing.FormatException) {
-          console.log('A code was found, but it was in a invalid format.')
+          console.log('Se encontró un QR, pero formato es inválido');
         }
       }
     });
@@ -241,21 +252,39 @@ export class PageTwo extends LitElement {
           min-height: 260px;
           max-width: 95vw;
         }
+        .der {
+          float: right;
+          margin: 24px 0;
+        }
       </style>
       <div class="receta">
         <mwc-icon-button icon="close" style="float: right; color: #f52419" @click="${() => {this._dialogQR = false; this._escaneaQR();}}" aria-label="Salir"></mwc-icon-button>
-        <vaadin-text-field class="texto" label="Nombre" ?disabled=${!this._key} id="nombrePte" @input="${e => this._receta.nombrePte = e.target.value}"></vaadin-text-field>      
-        <vaadin-number-field class="dato" label="Edad" ?disabled=${!this._key} id="edadPte" @input="${e => this._receta.edadPte = e.target.value}"></vaadin-number-field>      
-        <vaadin-text-field class="texto" label="Dirección" ?disabled=${!this._key} id="direccionPte" @input="${e => this._receta.direccionPte = e.target.value}"></vaadin-text-field>      
-        <vaadin-text-field class="dato" label="RUT" error-message="Rut inválido" ?disabled=${!this._key} id="rutPte" @input="${e => {e.target.value = `${e.target.value === '-'? e.target.value.replace('-', '') : e.target.value.split('').pop() != '-'? e.target.value.replace('-','').slice(0, -1) + '-' + e.target.value.slice(-1): e.target.value.replace('-','')}`; this._receta.rutPte = e.target.value; this._validaRutPte(e.target.value)}}"></vaadin-text-field>      
-        <div class="flotaIzq" style="margin-right: 8px;"></div><vaadin-text-field class="dato" label="Fecha" readonly ?disabled=${!this._key} value="${new Date().toLocaleDateString()}"></vaadin-text-field>
-        <vaadin-text-area class="rp" label="Rp." readonly id="rpPte" .value="${this._resQR}"></vaadin-text-area> 
-        <vaadin-button ?disabled="${!this._fraseClave}" theme="primary" @click="${() => {this._creaReceta(this._receta, this._fraseClave); this._borraReceta()}}">Crear Receta</vaadin-button> 
-        <div class="flotaIzq" style="margin-right: 1px;"></div><vaadin-button ?disabled="${!this._key}" theme="primary error" @click="${() => this._borraReceta()}">Borrar Receta</vaadin-button>          
+        <vaadin-text-field class="texto" label="Nombre" readonly id="nombrePte" .value="${this._receta.n}"></vaadin-text-field>
+        <vaadin-number-field class="dato" label="Edad" readonly id="edadPte" .value="${this._receta.e}"></vaadin-number-field>
+        <vaadin-text-field class="texto" label="Dirección" readonly id="direccionPte" .value="${this._receta.d}"></vaadin-text-field>
+        <vaadin-text-field class="dato" label="RUT" readonly id="rutPte" .value="${this._receta.r}"></vaadin-text-field>
+        <div class="flotaIzq" style="margin-right: 8px;"></div><vaadin-text-field class="dato" label="Fecha" readonly .value="${this._receta.f}"></vaadin-text-field>
+        <vaadin-text-area class="rp" label="Rp." readonly id="rpPte" .value="${this._receta.rp}"></vaadin-text-area>
+        <vaadin-text-field class="texto" label="Médico" readonly id="nombreMed" .value="${this._nombreMed}"></vaadin-text-field>
+        <vaadin-text-field class="dato" label="RUT Médico" readonly id="rutMed" .value="${this._rutMed}"></vaadin-text-field>
+        <vaadin-button class="der" theme="primary" @click="${()=> this._vendeProd()}">Marcar como vendida</vaadin-button>
       </div>
     `;
     const rend = () => render(template(), root);
     rend();
   }
-  
+  _vendeProd(){
+    const vendeProd = firebase.functions().httpsCallable('vendeProd');
+    vendeProd({user: this._user, idReceta: this._receta.i})
+    .then(res => {
+      codeReader.reset();
+      this._toggle = !this._toggle;
+      alert('Receta vendida');
+    })
+    .catch(function(error) {
+      codeReader.reset();
+      this._toggle = !this._toggle;
+      alert('Error');
+    });
+  }
 }

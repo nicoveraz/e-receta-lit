@@ -3,6 +3,7 @@ const admin = require('firebase-admin');
 const rp = require('request-promise');
 var pgp = require('openpgp');
 const puppeteer = require('puppeteer');
+const crypto = require('crypto');
 const opts = {
   memory: '2GB', 
   timeoutSeconds: 180
@@ -23,7 +24,7 @@ exports.validaMed = functions.https.onCall( async (data, context) => {
 		  'wrong-user'
 		);
 	}
-  	const rut = data.rut;
+  	const rut = data.rut.substring(0, data.rut.indexOf('-'));
 	const dataString = functions.config().supersalud.key;
 	const url = `https://api.superdesalud.gob.cl/prestadores/v1/prestadores/${rut}.json/?auth_key=${dataString}`;
 	var options = {
@@ -38,6 +39,10 @@ exports.validaMed = functions.https.onCall( async (data, context) => {
 		}, {merge: true});
 		await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('LOGIN').set({
 			medico: resultado.prestador.codigoBusqueda == 'Médico Cirujano',
+			nombreMed: `${resultado.prestador.nombres} ${resultado.prestador.apellidoPaterno} ${resultado.prestador.apellidoMaterno}`
+		}, {merge: true});
+		let puK = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('PUBKEY').set({
+			rut: data.rut,
 			nombreMed: `${resultado.prestador.nombres} ${resultado.prestador.apellidoPaterno} ${resultado.prestador.apellidoMaterno}`
 		}, {merge: true});
     	return resultado;
@@ -215,10 +220,6 @@ exports.creaReceta = functions.https.onCall(async (datos, context) => {
 			.then(async r => {
 				return await r.data().clavePrivada;
 			});
-			// let apkey = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('CREDENCIALES').get()
-			// .then(async r => {
-			// 	return await r.data().clavePublica;
-			// });
 
 			let apkey = await firestoreRef.collection('APP').doc('CRED').get()
 			.then(async r => {
@@ -230,8 +231,10 @@ exports.creaReceta = functions.https.onCall(async (datos, context) => {
 			let privKeyObj = (await pgp.key.readArmored(firma)).keys[0];
 			await privKeyObj.decrypt(pass);
 
+			const idReceta = await crypto.randomBytes(20).toString('hex');
+
 			const optionsSign = {
-			    message: pgp.cleartext.fromText(JSON.stringify({u: context.auth.uid, n: receta.nombrePte, e: receta.edadPte, d: receta.direccionPte, r: receta.rutPte, f: new Date().toLocaleDateString(), rp: receta.rpPte})),
+			    message: pgp.cleartext.fromText(JSON.stringify({i: idReceta, u: context.auth.uid, n: receta.nombrePte, e: receta.edadPte, d: receta.direccionPte, r: receta.rutPte, f: new Date().toLocaleDateString(), rp: receta.rpPte})),
 			    privateKeys: [privKeyObj]
 			};			
 
@@ -255,7 +258,7 @@ exports.creaReceta = functions.https.onCall(async (datos, context) => {
 	});
 });
 
-exports.leeQR = functions.https.onCall(async (datos, context) => {
+exports.procesaQR = functions.https.onCall(async (datos, context) => {
 	if (!(context.auth && context.auth.token)) {
 	  throw new functions.https.HttpsError(
 	    'permission-denied'
@@ -285,30 +288,80 @@ exports.leeQR = functions.https.onCall(async (datos, context) => {
 		privateKeys: [prKObj]
 	};
 
-	let mjeDesencripado = await pgp.decrypt(options).then( async plaintext => {
-	    return await plaintext.data;
-	});
+	let id, mjeFirmado, pubKR, pubKM, valid;
 
-	const id = mjeDesencripado.split('-----', 1)[0];
-	const mjeFirmado = mjeDesencripado.substring(mjeDesencripado.indexOf('-----'));
+	await pgp.decrypt(options)
+	.then( async plaintext => {
+	    let data = await plaintext.data;
+	    id = await data.split('-----', 1).toString().replace(/\n/g, '');
+	    mjeFirmado = await data.substring(data.indexOf('-----')).toString();
+	}).catch(e => console.log(e));
 
-	let pubKM = await firestoreRef.collection('MEDICOS').doc(id).collection('DATOS').doc('CREDENCIALES').get()
+	pubKM = await firestoreRef.collection('MEDICOS').doc(id).collection('DATOS').doc('CREDENCIALES').get()
 	.then(async r => {
-		const pubK = await r.data().clavePublica;
-		const pubKR = await pgp.key.readArmored(pubK);
-		return await pubKR.keys;
+		if(r.exists){
+			return await r.data().clavePublica;
+		} else {
+			throw 'ERROR: no hay datos';
+		}
 	}).catch(e => console.log('ERROR pubK: ', e));
 
-	optionsVerificaFirma = {
-	    message: (await pgp.cleartext.readArmored(mjeFirmado)), // parse armored message
-	    publicKeys: pubKM // for verification
+	const optionsVerificaFirma = {
+	    message: (await pgp.cleartext.readArmored(mjeFirmado)),
+	    publicKeys: (await pgp.key.readArmored(pubKM)).keys
 	};
 
-	return pgp.verify(optionsVerificaFirma).then(async (verified) => {
-		validity = await verified.signatures[0].valid; // true
-		if (validity) {
-			console.log('signed by key id ' + verified.signatures[0].keyid.toHex());
-			console.log(verified);
+	return pgp.verify(optionsVerificaFirma)
+	.then(async (verified) => {
+		valid = verified.signatures[0].valid; // true
+		const data = await JSON.parse(verified.data);
+		const i = data.i;
+		if (valid) {
+			let rp = await firestoreRef.collection('RECETAS').doc(i).set({
+				scan: admin.firestore.FieldValue.arrayUnion({
+					escaneadaPor: context.auth.uid,
+					nombre: context.auth.token.name || null,
+					email: context.auth.token.email || null,
+					fecha: new Date(),
+					idReceta: i
+				})
+			}, {merge: true});
+			let vendida = await firestoreRef.collection('RECETAS').doc(i).get()
+			.then(r => {
+				console.log('1',r.data().vendida);
+				return r.data().vendida;
+			});
+			console.log('2',vendida);
+			if(vendida){
+				return 'vendida';
+			} else {
+				return verified.data;
+			}
+		} else {
+			return 'no verificado';
 		}
-	});
+	}).catch(e => console.log(e));	
+});
+
+exports.vendeProd = functions.https.onCall(async (data, context) => {
+	if (!(context.auth && context.auth.token)) {
+	  throw new functions.https.HttpsError(
+	    'permission-denied'
+	  );
+	}
+	if(data.user != context.auth.uid){
+		throw new functions.https.HttpsError(
+		  'wrong-user'
+		);
+	}
+	const id = await data.idReceta;
+	console.log(id);
+	let rp = await firestoreRef.collection('RECETAS').doc(id).set({
+		vendida: true,
+		idReceta: data.idReceta,
+		vendidoPor: context.auth.uid,
+		nombreVendedor: context.auth.token.name || null,
+		emailVendedor: context.auth.token.email || null,
+		fecha: new Date()
+	}, {merge: true});
 });

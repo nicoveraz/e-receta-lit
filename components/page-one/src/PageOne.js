@@ -202,7 +202,7 @@ export class PageOne extends LitElement {
         <div class="imagen">
           <img ?hidden=${!this._captcha} src="data:image/png;base64,${this._captcha}">
         </div>
-        <vaadin-text-field label="Texto Captcha" class="texto-captcha" .value="${this._txtCaptcha}" @input="${e => this._txtCaptcha = e.target.value}" ?disabled=${!this._captcha}></vaadin-text-field>       
+        <vaadin-text-field label="Texto Captcha (minúsculas)" class="texto-captcha" .value="${this._txtCaptcha}" @input="${e => this._txtCaptcha = e.target.value}" ?disabled=${!this._captcha}></vaadin-text-field>       
         <vaadin-button theme="primary" ?disabled=${!this._captcha} @click="${() => {this._enviaCaptcha(this._txtCaptcha); this._captEnviado = true}}">Enviar</vaadin-button>            
       </div>
       <vaadin-text-field label="Estado Cédula Identidad" readonly .value="${(this._serieValida === true)? 'Cédula de Identidad Vigente': (this._serieValida === false)? 'No Vigente' : (this._serieValida === 'ERROR')? 'Error' : 'Pendiente'}" ?disabled=${!this._user}></vaadin-text-field>       
@@ -335,8 +335,7 @@ export class PageOne extends LitElement {
     }
     const validaMed = firebase.functions().httpsCallable('validaMed');
     const validaRutSerie = firebase.functions().httpsCallable('validaSerie');
-    const rut = r.substring(0, r.indexOf('-'));
-    validaMed({uid: this._user, rut: rut})
+    validaMed({uid: this._user, rut: r})
     .then(res => {
       this._medValido = (res.data.prestador.codigoBusqueda == "Médico Cirujano");
       validaRutSerie({uid: u, rut: r, serie: s})
