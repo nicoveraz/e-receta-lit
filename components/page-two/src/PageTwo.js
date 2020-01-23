@@ -124,7 +124,7 @@ export class PageTwo extends LitElement {
     super();
     this._selectCamara = false;
     this._camaras = [];
-    this._dialogQR = true;
+    this._dialogQR = false;
     this._toggle = false;
     this._receta = '';
     this._boundDialogRenderer = this.dialogRenderer.bind(this);

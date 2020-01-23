@@ -20,8 +20,7 @@ export default [
       ...config[0].plugins,
       cpy([
 			{
-		    // copy manifest.webmanifest
-		    files: ['manifest.json', 'favicon.ico'],
+		    files: ['manifest.json', 'images/**'],
 		    dest: 'dist',
 		    options: {
 		      	// parents makes sure to preserve the original folder structure

@@ -4,6 +4,7 @@
 	"description" : "Receta Electrónica según NewtriLabs",
 	"start_url" : "/",
 	"display" : "standalone",
+	"theme_color": "rgb(63, 49, 245)",
 	"background_color": "#19212b",
 	"icons": [
 	  {

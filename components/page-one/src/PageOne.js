@@ -4,6 +4,7 @@ import '@vaadin/vaadin-text-field/theme/lumo/vaadin-password-field.js';
 import '@vaadin/vaadin-text-field/theme/lumo/vaadin-text-field.js';
 import '@vaadin/vaadin-text-field/theme/lumo/vaadin-text-area.js';
 import '@vaadin/vaadin-button/theme/lumo/vaadin-button.js';
+import '@vaadin/vaadin-form-layout/vaadin-form-layout.js';
 import 'webcomponent-qr-code';
 import { IconButton } from '@material/mwc-icon-button/mwc-icon-button.js';
 
@@ -27,6 +28,10 @@ export class PageOne extends LitElement {
         overflow: auto;
         border-radius: 4px;
         display: block;
+        box-sizing: border-box;
+      }
+      vaadin-form-layout {
+        max-width: 780px;
       }
       p {
         font-weight: 300;
@@ -38,11 +43,8 @@ export class PageOne extends LitElement {
         width: 240px;
         max-width: 70vw;
       }
-      .texto-ancho {
-        width: 486px;
-      }
       .texto-captcha {
-        width: 276px;
+        width: calc(100% - 98px);
       }
       .receta {
         width: 640px;
@@ -54,29 +56,36 @@ export class PageOne extends LitElement {
         align-items: center;
         height: 600px;
       }
-      @media(max-width: 700px){
-        #receta{
-          margin: 0 auto;
+      @media(max-width: 820px){
+        :host {
+          padding: 0;
         }
       }
-      .texto {
-        width: calc(640px - 130px);
-        max-width: 70vw;
+      @media(max-width: 700px){
+        #eReceta{
+          max-width: 100vw;
+          border-radius: 0;
+        }
+        #receta {
+          margin: 0 auto;
+        }
+        vaadin-form-layout {
+          max-width: 100vw;
+        }
       }
       .dato {
         width: 120px;
       }
       .rp {
-        width: 640px;
         min-height: 260px;
-        max-width: 95vw;
       }
       .imagen {
         width:204px;
         height:57px;
-        vertical-align: bottom;
-        margin-bottom: 5px;
-        display: inline-block;
+        position: relative;
+        vertical-align: bottom; 
+        display: inline-flex;
+        bottom: -12px;
         background-color: rgba(0,0,0,.035);
       }
       .imagen > img {
@@ -89,15 +98,10 @@ export class PageOne extends LitElement {
         display: inline-block;
         vertical-align: bottom;
       }
-      .flotaIzq {
-        display: inline-block;
-        width: calc(640px - 130px);
-        max-width: 70vw; 
-      }
       qr-code{
         margin: 25px auto;
       }
-      mwc-icon-button {
+      mwc-icon-button{
         background: #f52419;
         color: white;
         border-radius: 50%;
@@ -190,43 +194,62 @@ export class PageOne extends LitElement {
     return html`
     <div id="eReceta">
       <mwc-icon-button ?disabled=${!this._user} icon="close" style="float: right" @click="${() => this._salir()}" aria-label="Salir"></mwc-icon-button>
-      <h5>Paso 1: Validar cuenta de correo electrónico ${this._user? okLogo : ''}</h5>
-      <p>(Puede ser cualquiera, con fines de prueba por ahora sólo Gmail. Único paso necesario por ahora para acceder al lector QR)</p>
-      <vaadin-button theme="primary" @click="${() => this._signIn()}" ?disabled=${this._user}>Ingresar con Google</vaadin-button>
-      <h5 style="color: ${this._user? 'black':'rgba(0,0,0,.3)'}">Paso 2: Validar Médico ${this._generaClave? okLogo : ''}</h5>
-      <p>(Sólo una vez: ingresar RUT y número de serie, con ello se obtiene registro Superintendencia de Salud, para validar el RUT es necesario completar, antes de 20 segundos, el texto del CAPTCHA)</p>
-      <vaadin-text-field clear-button-visible id="rutDoc" error-message="Rut inválido" label="RUT" ?disabled=${!this._user || this._generaClave || this._captEnviado} .value="${this._rutDoc}" @input="${(e) => {e.target.value = `${e.target.value === '-'? e.target.value.replace('-', '') : e.target.value.split('').pop() != '-'? e.target.value.replace('-','').slice(0, -1) + '-' + e.target.value.slice(-1): e.target.value.replace('-','')}`; this._rutDoc = e.target.value; this._validaRut(e.target.value)}}"></vaadin-text-field>      
-      <vaadin-text-field label="Nº de Serie o Documento (sin puntos)" .value="${this._numSerie}" ?disabled=${!this._rutValido  || this._generaClave || this._captEnviado} @input="${e => this._numSerie = e.target.value}"></vaadin-text-field>      
-      <vaadin-button ?disabled="${!this._rutDoc || !this._numSerie || this._generaClave || this._captEnviado}" @click="${(e) => this._validaMed(this._user, this._rutDoc, this._numSerie)}" theme="primary">Validar</vaadin-button><br>   
-      <div>
+      <vaadin-form-layout class="form">
+        <h5 colspan="2">Paso 1: Validar cuenta de correo electrónico ${this._user? okLogo : ''}</h5>
+        <p colspan="2">(Puede ser cualquiera, con fines de prueba por ahora sólo Gmail. Único paso necesario por ahora para acceder al lector QR)</p>
+        <div>
+          <vaadin-button theme="primary" @click="${() => this._signIn()}" ?disabled=${this._user}>Ingresar con Google</vaadin-button>          
+        </div>
+      </vaadin-form-layout>
+      <vaadin-form-layout class="form">
+        <h5 colspan="2" style="color: ${this._user? 'black':'rgba(0,0,0,.3)'}">Paso 2: Validar Médico ${this._generaClave? okLogo : ''}</h5>
+        <p colspan="2" style="color: ${this._user? 'black':'rgba(0,0,0,.3)'}">(Sólo una vez: ingresar RUT y número de serie, con ello se obtiene registro Superintendencia de Salud, para validar el RUT es necesario completar, antes de 20 segundos, el texto del CAPTCHA)</p>
+        <vaadin-text-field clear-button-visible id="rutDoc" error-message="Rut inválido" label="RUT" ?disabled=${!this._user || this._generaClave || this._captEnviado} .value="${this._rutDoc}" @input="${(e) => {e.target.value = `${e.target.value === '-'? e.target.value.replace('-', '') : e.target.value.split('').pop() != '-'? e.target.value.replace('-','').slice(0, -1) + '-' + e.target.value.slice(-1): e.target.value.replace('-','')}`; this._rutDoc = e.target.value; this._validaRut(e.target.value)}}"></vaadin-text-field>      
+        <div>
+          <vaadin-text-field class="texto-captcha" label="Nº de Serie o Documento (sin puntos)" .value="${this._numSerie}" ?disabled=${!this._rutValido  || this._generaClave || this._captEnviado} @input="${e => this._numSerie = e.target.value}"></vaadin-text-field>      
+          <vaadin-button ?disabled="${!this._rutDoc || !this._numSerie || this._generaClave || this._captEnviado}" @click="${(e) => this._validaMed(this._user, this._rutDoc, this._numSerie)}" theme="primary">Validar</vaadin-button><br>            
+        </div>
         <div class="imagen">
           <img ?hidden=${!this._captcha} src="data:image/png;base64,${this._captcha}">
         </div>
-        <vaadin-text-field label="Texto Captcha (minúsculas)" class="texto-captcha" .value="${this._txtCaptcha}" @input="${e => this._txtCaptcha = e.target.value}" ?disabled=${!this._captcha}></vaadin-text-field>       
-        <vaadin-button theme="primary" ?disabled=${!this._captcha} @click="${() => {this._enviaCaptcha(this._txtCaptcha); this._captEnviado = true}}">Enviar</vaadin-button>            
-      </div>
-      <vaadin-text-field label="Estado Cédula Identidad" readonly .value="${(this._serieValida === true)? 'Cédula de Identidad Vigente': (this._serieValida === false)? 'No Vigente' : (this._serieValida === 'ERROR')? 'Error' : 'Pendiente'}" ?disabled=${!this._user}></vaadin-text-field>       
-      <vaadin-text-field label="Registro Superintendencia" .value="${(this._medValido === true)? 'Médico Cirujano': (this._medValido === true)? 'No Registrado' : 'Pendiente'}" readonly ?disabled=${!this._user}></vaadin-text-field><br>      
-      <vaadin-text-field label="Nombre"  class="texto-ancho" .value="${this._nombreMed}" readonly ?disabled=${!this._user}></vaadin-text-field>       
-      <h5 style="color: ${this._generaClave? 'black':'rgba(0,0,0,.3)'}">Paso 3: Llave Pública y Privada ${this._key? okLogo : ''}</h5>
-      <p>(Sólo una vez. No guardamos copia de ella, por eso no puede olvidarla)</p>
-      <vaadin-password-field class="texto-ancho" label="Frase Clave (No puede olvidarla. No use la misma de su email)" ?disabled=${!this._generaClave || this._key} .value="${this._passphrase}" @input="${e => this._passphrase = e.target.value}"></vaadin-password-field>      
-      <vaadin-button theme="primary" @click="${(e) => this._fxGeneraFirma(this._medValido, this._serieValida, this._user, this._passphrase)}" ?disabled="${!this._passphrase || this._key}">Generar Firma</vaadin-button>
-      <h5 style="color: ${this._key? 'black':'rgba(0,0,0,.3)'}">Paso 4: Receta</h5>            
-      <div class="receta">
-        <vaadin-text-field class="texto" label="Nombre" ?disabled=${!this._key} id="nombrePte" @input="${e => this._receta.nombrePte = e.target.value}"></vaadin-text-field>      
-        <vaadin-number-field class="dato" label="Edad" ?disabled=${!this._key} id="edadPte" @input="${e => this._receta.edadPte = e.target.value}"></vaadin-number-field>      
-        <vaadin-text-field class="texto" label="Dirección" ?disabled=${!this._key} id="direccionPte" @input="${e => this._receta.direccionPte = e.target.value}"></vaadin-text-field>      
-        <vaadin-text-field class="dato" label="RUT" error-message="Rut inválido" ?disabled=${!this._key} id="rutPte" @input="${e => {e.target.value = `${e.target.value === '-'? e.target.value.replace('-', '') : e.target.value.split('').pop() != '-'? e.target.value.replace('-','').slice(0, -1) + '-' + e.target.value.slice(-1): e.target.value.replace('-','')}`; this._receta.rutPte = e.target.value; this._validaRutPte(e.target.value)}}"></vaadin-text-field>      
+        <div>
+          <vaadin-text-field label="Texto Captcha (minúsculas)" class="texto-captcha" .value="${this._txtCaptcha}" @input="${e => this._txtCaptcha = e.target.value}" ?disabled=${!this._captcha}></vaadin-text-field>       
+          <vaadin-button theme="primary" ?disabled=${!this._captcha} @click="${() => {this._enviaCaptcha(this._txtCaptcha); this._captEnviado = true}}">Enviar</vaadin-button>            
+        </div>
+        <vaadin-text-field label="Estado Cédula Identidad" readonly .value="${(this._serieValida === true)? 'Cédula de Identidad Vigente': (this._serieValida === false)? 'No Vigente' : (this._serieValida === 'ERROR')? 'Error' : 'Pendiente'}" ?disabled=${!this._user}></vaadin-text-field>       
+        <vaadin-text-field label="Registro Superintendencia" .value="${(this._medValido === true)? 'Médico Cirujano': (this._medValido === true)? 'No Registrado' : 'Pendiente'}" readonly ?disabled=${!this._user}></vaadin-text-field><br>      
+        <vaadin-text-field colspan="2" label="Nombre" .value="${this._nombreMed}" readonly ?disabled=${!this._user}></vaadin-text-field>       
+      </vaadin-form-layout>
+      <vaadin-form-layout class="form">
+        <h5 colspan="2" style="color: ${this._generaClave? 'black':'rgba(0,0,0,.3)'}">Paso 3: Llave Pública y Privada ${this._key? okLogo : ''}</h5>
+        <p colspan="2" style="color: ${this._user? 'black':'rgba(0,0,0,.3)'}">(Sólo una vez. No guardamos copia de ella, por eso no puede olvidarla)</p>
+        <div colspan="2">
+          <vaadin-password-field style="width: calc(100% - 138px)" label="Frase Clave (No puede olvidarla. No use la misma de su email)" ?disabled=${!this._generaClave || this._key} .value="${this._passphrase}" @input="${e => this._passphrase = e.target.value}"></vaadin-password-field>      
+          <vaadin-button theme="primary" @click="${(e) => this._fxGeneraFirma(this._medValido, this._serieValida, this._user, this._passphrase)}" ?disabled="${!this._passphrase || this._key}">Generar Firma</vaadin-button>
+        </div>
+      </vaadin-form-layout>
+      <vaadin-form-layout class="form">
+        <h5 colspan="2" style="min-width: 300px; color: ${this._key? 'black':'rgba(0,0,0,.3)'}">Paso 4: Receta</h5>            
+        <vaadin-text-field colspan="2" label="Nombre" ?disabled=${!this._key} id="nombrePte" @input="${e => this._receta.nombrePte = e.target.value}"></vaadin-text-field>      
+        <vaadin-number-field label="Edad" ?disabled=${!this._key} id="edadPte" @input="${e => this._receta.edadPte = e.target.value}"></vaadin-number-field>      
+        <vaadin-text-field label="RUT" error-message="Rut inválido" ?disabled=${!this._key} id="rutPte" @input="${e => {e.target.value = `${e.target.value === '-'? e.target.value.replace('-', '') : e.target.value.split('').pop() != '-'? e.target.value.replace('-','').slice(0, -1) + '-' + e.target.value.slice(-1): e.target.value.replace('-','')}`; this._receta.rutPte = e.target.value; this._validaRutPte(e.target.value)}}"></vaadin-text-field>
+        <vaadin-text-field colspan="2" label="Dirección" ?disabled=${!this._key} id="direccionPte" @input="${e => this._receta.direccionPte = e.target.value}"></vaadin-text-field>      
         <div class="flotaIzq" style="margin-right: 8px;"></div><vaadin-text-field class="dato" label="Fecha" readonly ?disabled=${!this._key} value="${new Date().toLocaleDateString()}"></vaadin-text-field>
-        <vaadin-text-area class="rp" label="Rp." ?disabled=${!this._key} id="rpPte" @input="${e => this._receta.rpPte = e.target.value}"></vaadin-text-area> 
-        <vaadin-password-field class="texto" label="Frase Clave" id="fraseClave" ?disabled=${!this._key} @input="${e => this._fraseClave = e.target.value}"></vaadin-password-field>      
+        <vaadin-text-area colspan="2" class="rp" label="Rp." ?disabled=${!this._key} id="rpPte" @input="${e => this._receta.rpPte = e.target.value}"></vaadin-text-area> 
+        <vaadin-password-field label="Frase Clave" id="fraseClave" ?disabled=${!this._key} @input="${e => this._fraseClave = e.target.value}"></vaadin-password-field>      
         <vaadin-button ?disabled="${!this._fraseClave}" theme="primary" @click="${() => {this._creaReceta(this._receta, this._fraseClave);}}">Crear Receta</vaadin-button> 
-        <div class="flotaIzq" style="margin-right: 1px;"></div><vaadin-button ?disabled="${!this._key}" theme="primary error" @click="${() => this._borraReceta()}">Borrar Receta</vaadin-button>          
-      </div>
-      <h5 style="color: ${this._qr? 'black':'rgba(0,0,0,.3)'}">Resultado: QR Receta ${this._qr? okLogo : ''}</h5> 
+        <div style="margin-right: 1px;"></div><vaadin-button ?disabled="${!this._key}" theme="primary error" @click="${() => this._borraReceta()}">Borrar Receta</vaadin-button>          
+      </vaadin-form-layout>
+      <h5 style="color: ${this._qr? 'black':'rgba(0,0,0,.3)'}">Resultado: QR Receta ${this._qr? okLogo : ''}</h5>
+      ${navigator.canShare? html`
+          <mwc-icon-button icon="share" ?disabled="${!this._qr}" style="float: right; background: rgba(0,0,0,.75); color: white; border-radius: 50%;" @click="${() => this._compartePNG()}" aria-label="Compartir QR"></mwc-icon-button>
+        `:html`
+          <mwc-icon-button icon="print" ?disabled="${!this._qr}" style="float: right; background: rgba(0,0,0,.75); color: white; border-radius: 50%;" @click="${() => this._printPNG()}" aria-label="Imprimir QR"></mwc-icon-button>
+        `} 
       <div class="receta qr">
-        <qr-code format="svg" ?hidden="${!this._qr}" .data="${this._qr}"></qr-code>          
+      
+        
+        <qr-code id="qrCode" format="png" ?hidden="${!this._qr}" .data="${this._qr}"></qr-code>   
       </div>
     <div>
     `;
@@ -252,6 +275,14 @@ export class PageOne extends LitElement {
         });
 
       }
+    });
+    this.shadowRoot.querySelectorAll('.form')
+      .forEach(e => {
+        e.responsiveSteps = [
+        {minWidth: 0, columns: 1, labelsPosition: 'top'},
+        {minWidth: '12em', columns: 1},
+        {minWidth: '24em', columns: 2}
+      ];
     });
   }
   updated(changedProps){
@@ -279,6 +310,40 @@ export class PageOne extends LitElement {
       this._txtCaptcha = '';
       this._captcha = null;
     });
+  }
+  _compartePNG(){
+    const img = this.shadowRoot.querySelector('#qrCode').shadowRoot.querySelector('img');
+    fetch(img.src)
+      .then(r => r.blob())
+      .then(b => {
+        const file = new File([b], 'QR-Receta.png', b); 
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          navigator.share({
+            files: [file],
+            title: 'QR de e-receta'
+          })
+          .then(() => console.log('Share was successful.'))
+          .catch((error) => console.log('Sharing failed', error));
+        } else {
+          console.log(`Your system doesn't support sharing files.`);
+        }
+      });
+  }
+  printPNG(){
+    const img = this.shadowRoot.querySelector('#qrCode').shadowRoot.querySelector('img');
+    var popup;
+
+    function closePrint () {
+        if ( popup ) {
+            popup.close();
+        }
+    }
+
+    popup = window.open(img.src);
+    popup.onbeforeunload = closePrint;
+    popup.onafterprint = closePrint;
+    popup.focus(); // Required for IE
+    popup.print();
   }
   _validaRut(e){
       this.shadowRoot.querySelector('#rutDoc').checkValidity = () => {     
@@ -364,7 +429,6 @@ export class PageOne extends LitElement {
     creaReceta(datos)
     .then(async r => {
       this._qr = r.data;
-      console.log(r);
       this.shadowRoot.querySelector('#fraseClave').value = '';
       this._fraseClave = '';
     }).catch(e => {

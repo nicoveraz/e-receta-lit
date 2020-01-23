@@ -30,8 +30,8 @@ export class EReceta extends LitElement {
       }
 
       header {
-        width: 100%;
-        max-width: 1270px;
+        width: 100vw;
+        max-width: 100vw;
         background: #fff;
         border-bottom: 1px solid #ccc;
         z-index: 100;
@@ -77,6 +77,14 @@ export class EReceta extends LitElement {
       .app-footer a {
         margin-left: 5px;
         text-decoration: none;
+      }
+      @media(max-width: 640px) {
+        header ul li a {
+          font-size: calc(10px + 1vmin);
+        }
+        header ul {
+          min-width: 100px;
+        }
       }
     `;
   }

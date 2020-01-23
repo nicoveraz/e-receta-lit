@@ -23,6 +23,9 @@ export class PageMain extends LitElement {
       a {
         text-decoration: none;
       }
+      h1 {
+        white-space: nowrap;
+      }
 
       svg {
         animation: app-logo-spin infinite 20s linear;
@@ -36,7 +39,21 @@ export class PageMain extends LitElement {
         box-sizing: border-box;
         border-radius: 4px;
         display: block;
-        max-width: 690px;
+        max-width: 780px;
+      }
+
+      @media(max-width: 640px) {
+        #eReceta {
+          padding: 48px 0;
+        }
+        p {
+          padding: 24px 36px;
+        }
+        svg {
+          animation: app-logo-spin infinite 20s linear;
+          width: 200px;
+          height: 200px;
+        }
       }
 
       @keyframes app-logo-spin {
@@ -52,7 +69,6 @@ export class PageMain extends LitElement {
 
   static get properties() {
     return {
-      title: { type: String },
       logo: { type: Function },
     };
   }
@@ -60,7 +76,6 @@ export class PageMain extends LitElement {
   constructor() {
     super();
 
-    this.title = 'Bienvenido a e-receta';
     this.logo = html``;
   }
 
@@ -68,7 +83,8 @@ export class PageMain extends LitElement {
     return html`
     <div id="eReceta">
       ${this.logo}
-      <h1>${this.title}</h1>
+      <h1>Bienvenido a</h1>
+      <h1>e-receta</h1>
       <h3>Experimento de NewtriLabs</h3>
       <p class="texto"><strong>Importante:</strong> A pesar de ser seguro y basarse en últimas tecnologías de encriptación, este proyecto aún no cumple con legislación chilena, pues no cuenta con Firma Digital Avanzada para cada médico <i>(Requerimiento, en nuestra opinión, completamente innecesario)</i></p>
       <p class="texto">Receta encriptada y firmada con esquema llave pública/privada de 256bits</p>
