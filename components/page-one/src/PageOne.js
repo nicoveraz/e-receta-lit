@@ -37,24 +37,11 @@ export class PageOne extends LitElement {
         font-weight: 300;
         font-size: 50%;
         margin-top: -24px;
-        max-width: 640px;
-      }
-      vaadin-number-field, vaadin-text-field{
-        width: 240px;
-        max-width: 70vw;
+        width: 640px;
+        max-width: calc(100vw - 48px);
       }
       .texto-captcha {
         width: calc(100% - 98px);
-      }
-      .receta {
-        width: 640px;
-        max-width: 95vw;
-      }
-      .qr {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 600px;
       }
       @media(max-width: 820px){
         :host {
@@ -88,10 +75,6 @@ export class PageOne extends LitElement {
         bottom: -12px;
         background-color: rgba(0,0,0,.035);
       }
-      .imagen > img {
-        width:204px;
-        height:57px;
-      }
       svg{
         height: 24px;
         width: 24px;
@@ -100,6 +83,16 @@ export class PageOne extends LitElement {
       }
       qr-code{
         margin: 25px auto;
+      }
+
+      .receta {
+        width: 640px;
+        max-width: 95vw;
+        height: 600px;
+        margin-top: 48px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
       }
       mwc-icon-button{
         background: #f52419;
@@ -194,11 +187,13 @@ export class PageOne extends LitElement {
     return html`
     <div id="eReceta">
       <mwc-icon-button ?disabled=${!this._user} icon="close" style="float: right" @click="${() => this._salir()}" aria-label="Salir"></mwc-icon-button>
-      <h5>Paso 1: Validar cuenta de correo electrónico ${this._user? okLogo : ''}</h5>
-      <p>(Puede ser cualquiera, con fines de prueba por ahora sólo Gmail. Único paso necesario por ahora para acceder al lector QR)</p>
-      <div>
-        <vaadin-button theme="primary" @click="${() => this._signIn()}" ?disabled=${this._user}>Ingresar con Google</vaadin-button>          
-      </div>
+      <vaadin-form-layout class="form" style="margin-top: 48px;">  
+        <h5 colspan="2">Paso 1: Validar cuenta de correo electrónico ${this._user? okLogo : ''}</h5>
+        <p colspan="2">(Puede ser cualquiera, con fines de prueba por ahora sólo Gmail. Único paso necesario por ahora para acceder al lector QR)</p>
+        <div>
+          <vaadin-button theme="primary" @click="${() => this._signIn()}" ?disabled=${this._user}>Ingresar con Google</vaadin-button>          
+        </div>
+      </vaadin-form-layout>
       <vaadin-form-layout class="form">
         <h5 colspan="2" style="color: ${this._user? 'black':'rgba(0,0,0,.3)'}">Paso 2: Validar Médico ${this._generaClave? okLogo : ''}</h5>
         <p colspan="2" style="color: ${this._user? 'black':'rgba(0,0,0,.3)'}">(Sólo una vez: ingresar RUT y número de serie, con ello se obtiene registro Superintendencia de Salud, para validar el RUT es necesario completar, antes de 20 segundos, el texto del CAPTCHA)</p>
@@ -222,7 +217,7 @@ export class PageOne extends LitElement {
         <h5 colspan="2" style="color: ${this._generaClave? 'black':'rgba(0,0,0,.3)'}">Paso 3: Llave Pública y Privada ${this._key? okLogo : ''}</h5>
         <p colspan="2" style="color: ${this._user? 'black':'rgba(0,0,0,.3)'}">(Sólo una vez. No guardamos copia de ella, por eso no puede olvidarla)</p>
         <div colspan="2">
-          <vaadin-password-field style="width: calc(100% - 138px)" label="Frase Clave (No puede olvidarla. No use la misma de su email)" ?disabled=${!this._generaClave || this._key} .value="${this._passphrase}" @input="${e => this._passphrase = e.target.value}"></vaadin-password-field>      
+          <vaadin-password-field style="width: 378px" label="Frase Clave (No puede olvidarla. No use la misma de su email)" ?disabled=${!this._generaClave || this._key} .value="${this._passphrase}" @input="${e => this._passphrase = e.target.value}"></vaadin-password-field>      
           <vaadin-button theme="primary" @click="${(e) => this._fxGeneraFirma(this._medValido, this._serieValida, this._user, this._passphrase)}" ?disabled="${!this._passphrase || this._key}">Generar Firma</vaadin-button>
         </div>
       </vaadin-form-layout>
@@ -244,10 +239,9 @@ export class PageOne extends LitElement {
         `:html`
           <mwc-icon-button icon="print" ?disabled="${!this._qr}" style="float: right; background: rgba(0,0,0,.75); color: white; border-radius: 50%;" @click="${() => this._printPNG()}" aria-label="Imprimir QR"></mwc-icon-button>
         `} 
-      <div class="receta qr">
-      
-        
-        <qr-code id="qrCode" format="png" ?hidden="${!this._qr}" .data="${this._qr}"></qr-code>   
+      <br>
+      <div class="receta">       
+        <qr-code id="qrCode" format="png" modulesize="3" ?hidden="${!this._qr}" .data="${this._qr}"></qr-code>   
       </div>
     <div>
     `;
@@ -318,7 +312,13 @@ export class PageOne extends LitElement {
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           navigator.share({
             files: [file],
-            title: 'QR de e-receta'
+            title: 'QR de e-receta',
+            text: `
+              Nombre: ${this._receta.nombrePte}
+              Fecha: ${new Date().toLocaleDateString()}
+              Rp. ${this._receta.rpPte}
+              Médico: ${this._nombreMed}
+            `          
           })
           .then(() => {
             console.log('Share was successful.');
@@ -330,21 +330,28 @@ export class PageOne extends LitElement {
         }
       });
   }
-  printPNG(){
-    const img = this.shadowRoot.querySelector('#qrCode').shadowRoot.querySelector('img');
-    var popup;
+  _printPNG(){
+    var img = this.shadowRoot.querySelector('#qrCode').shadowRoot.querySelector('img');
+    fetch(img.src)
+      .then(r => r.blob())
+      .then(async b => {
+        var objectURL = await URL.createObjectURL(b);
+        img.src = await objectURL;
+      }).then(() => {
+        var popup;
 
-    function closePrint () {
-        if ( popup ) {
-            popup.close();
+        function closePrint () {
+            if ( popup ) {
+                popup.close();
+            }
         }
-    }
 
-    popup = window.open(img.src);
-    popup.onbeforeunload = closePrint;
-    popup.onafterprint = closePrint;
-    popup.focus(); // Required for IE
-    popup.print();
+        popup = window.open(img.src);
+        popup.onbeforeunload = closePrint;
+        popup.onafterprint = closePrint;
+        popup.focus(); // Required for IE
+        popup.print();
+      });   
   }
   _validaRut(e){
       this.shadowRoot.querySelector('#rutDoc').checkValidity = () => {     

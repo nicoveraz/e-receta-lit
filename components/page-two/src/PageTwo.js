@@ -8,6 +8,7 @@ import '@vaadin/vaadin-text-field/theme/lumo/vaadin-number-field.js';
 import '@vaadin/vaadin-text-field/theme/lumo/vaadin-text-field.js';
 import '@vaadin/vaadin-text-field/theme/lumo/vaadin-text-area.js';
 import '@vaadin/vaadin-button/theme/lumo/vaadin-button.js';
+import '@vaadin/vaadin-form-layout/vaadin-form-layout.js';
 
 import { firebase } from '../../page-one/src/firebase.js';
 
@@ -40,10 +41,10 @@ export class PageTwo extends LitElement {
         position: fixed;
         display: block;
         right: 100px;
-        top: 148px;
+        top: 190px;
       }
       #toggle {
-        top: 78px;
+        top: 100px;
       }
       mwc-icon-button-toggle[disabled] {
         --mdc-theme-text-disabled-on-light: rgba(255,255,255,.8);
@@ -166,7 +167,14 @@ export class PageTwo extends LitElement {
         }).catch(err => console.error(err));
       }
     });
-    console.log(this._user);
+    this.shadowRoot.querySelectorAll('.form')
+      .forEach(e => {
+        e.responsiveSteps = [
+        {minWidth: 0, columns: 1, labelsPosition: 'top'},
+        {minWidth: '12em', columns: 1},
+        {minWidth: '24em', columns: 2}
+      ];
+    });
          
   }
   updated(changedProps){
@@ -240,17 +248,11 @@ export class PageTwo extends LitElement {
           width: 640px;
           max-width: 95vw;
         }
-        .texto {
-          width: calc(640px - 130px);
-          max-width: 70vw;
-        }
         .dato {
           width: 120px;
         }
         .rp {
-          width: 640px;
           min-height: 260px;
-          max-width: 95vw;
         }
         .der {
           float: right;
@@ -259,15 +261,18 @@ export class PageTwo extends LitElement {
       </style>
       <div class="receta">
         <mwc-icon-button icon="close" style="float: right; color: #f52419" @click="${() => {this._dialogQR = false; this._escaneaQR();}}" aria-label="Salir"></mwc-icon-button>
-        <vaadin-text-field class="texto" label="Nombre" readonly id="nombrePte" .value="${this._receta.n}"></vaadin-text-field>
-        <vaadin-number-field class="dato" label="Edad" readonly id="edadPte" .value="${this._receta.e}"></vaadin-number-field>
-        <vaadin-text-field class="texto" label="Dirección" readonly id="direccionPte" .value="${this._receta.d}"></vaadin-text-field>
-        <vaadin-text-field class="dato" label="RUT" readonly id="rutPte" .value="${this._receta.r}"></vaadin-text-field>
-        <div class="flotaIzq" style="margin-right: 8px;"></div><vaadin-text-field class="dato" label="Fecha" readonly .value="${this._receta.f}"></vaadin-text-field>
-        <vaadin-text-area class="rp" label="Rp." readonly id="rpPte" .value="${this._receta.rp}"></vaadin-text-area>
-        <vaadin-text-field class="texto" label="Médico" readonly id="nombreMed" .value="${this._nombreMed}"></vaadin-text-field>
-        <vaadin-text-field class="dato" label="RUT Médico" readonly id="rutMed" .value="${this._rutMed}"></vaadin-text-field>
-        <vaadin-button class="der" theme="primary" @click="${()=> this._vendeProd()}">Marcar como vendida</vaadin-button>
+        <vaadin-form-layout class="form" style="margin-top: 48px"> 
+          <h5 colspan="2" style="min-width: 300px">Receta</h5>            
+          <vaadin-text-field colspan="2" label="Nombre" readonly id="nombrePte" .value="${this._receta.n}"></vaadin-text-field>
+          <vaadin-number-field class="dato" label="Edad" readonly id="edadPte" .value="${this._receta.e}"></vaadin-number-field>
+          <vaadin-text-field class="dato" label="RUT" readonly id="rutPte" .value="${this._receta.r}"></vaadin-text-field>
+          <vaadin-text-field colspan="2" label="Dirección" readonly id="direccionPte" .value="${this._receta.d}"></vaadin-text-field>
+          <div class="flotaIzq" style="margin-right: 8px;"></div><vaadin-text-field class="dato" label="Fecha" readonly .value="${this._receta.f}"></vaadin-text-field>
+          <vaadin-text-area class="rp" colspan="2" label="Rp." readonly id="rpPte" .value="${this._receta.rp}"></vaadin-text-area>
+          <vaadin-text-field label="Médico" readonly id="nombreMed" .value="${this._nombreMed}"></vaadin-text-field>
+          <vaadin-text-field label="RUT Médico" readonly id="rutMed" .value="${this._rutMed}"></vaadin-text-field>
+          <vaadin-button class="der" theme="primary" @click="${()=> this._vendeProd()}">Marcar como vendida</vaadin-button>
+        </form>
       </div>
     `;
     const rend = () => render(template(), root);
