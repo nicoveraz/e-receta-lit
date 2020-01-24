@@ -83,7 +83,7 @@ export class PageOne extends LitElement {
         vertical-align: bottom;
       }
       qr-code{
-        margin: 25px auto;
+        margin: 50px auto;
       }
 
       .receta {
@@ -233,21 +233,22 @@ export class PageOne extends LitElement {
       </vaadin-form-layout>
       <vaadin-form-layout class="form">
         <h5 colspan="2" style="min-width: 300px; color: ${this._key? 'black':'rgba(0,0,0,.3)'}">Paso 4: Receta</h5>            
-        <vaadin-text-field colspan="2" label="Nombre" ?disabled=${!this._key} id="nombrePte" @input="${e => this._receta.nombrePte = e.target.value}"></vaadin-text-field>      
+        <vaadin-text-field required colspan="2" label="Nombre" ?disabled=${!this._key} id="nombrePte" @input="${e => this._receta.nombrePte = e.target.value}"></vaadin-text-field>      
         <vaadin-number-field label="Edad" ?disabled=${!this._key} id="edadPte" @input="${e => this._receta.edadPte = e.target.value}"></vaadin-number-field>      
-        <vaadin-text-field label="RUT" error-message="Rut inválido" ?disabled=${!this._key} id="rutPte" @input="${e => {e.target.value = `${e.target.value === '-'? e.target.value.replace('-', '') : e.target.value.split('').pop() != '-'? e.target.value.replace('-','').slice(0, -1) + '-' + e.target.value.slice(-1): e.target.value.replace('-','')}`; this._receta.rutPte = e.target.value; this._validaRutPte(e.target.value)}}"></vaadin-text-field>
+        <vaadin-text-field required label="RUT" error-message="Rut inválido" ?disabled=${!this._key} id="rutPte" @input="${e => {e.target.value = `${e.target.value === '-'? e.target.value.replace('-', '') : e.target.value.split('').pop() != '-'? e.target.value.replace('-','').slice(0, -1) + '-' + e.target.value.slice(-1): e.target.value.replace('-','')}`; this._receta.rutPte = e.target.value; this._validaRutPte(e.target.value)}}"></vaadin-text-field>
         <vaadin-text-field colspan="2" label="Dirección" ?disabled=${!this._key} id="direccionPte" @input="${e => this._receta.direccionPte = e.target.value}"></vaadin-text-field>      
         <div class="flotaIzq" style="margin-right: 8px;"></div><vaadin-text-field class="dato" label="Fecha" readonly ?disabled=${!this._key} value="${new Date().toLocaleDateString()}"></vaadin-text-field>
-        <vaadin-text-area colspan="2" class="rp" label="Rp." ?disabled=${!this._key} id="rpPte" @input="${e => this._receta.rpPte = e.target.value}"></vaadin-text-area> 
-        <vaadin-password-field label="Frase Clave" id="fraseClave" ?disabled=${!this._key} @input="${e => this._fraseClave = e.target.value}"></vaadin-password-field>      
-        <vaadin-button ?disabled="${!this._fraseClave}" theme="primary" @click="${() => {this._creaReceta(this._receta, this._fraseClave);}}">Crear Receta</vaadin-button> 
+        <vaadin-text-area required colspan="2" class="rp" label="Rp." ?disabled="${(!this._key || !this._receta.nombrePte || !this._receta.rutPte || this._receta.rpPte)}" id="rpPte" @input="${e => this._receta.rpPte = e.target.value}"></vaadin-text-area> 
+        <vaadin-password-field required label="Frase Clave" id="fraseClave" ?disabled=${!this._key} @input="${e => this._fraseClave = e.target.value}"></vaadin-password-field>      
+        <vaadin-button ?disabled="${(!this._fraseClave || !this._key || !this._receta.nombrePte || !this._receta.rutPte || this._receta.rpPte)}" theme="primary" @click="${() => {this._creaReceta(this._receta, this._fraseClave);}}">Crear Receta</vaadin-button> 
         <div style="margin-right: 1px;"></div><vaadin-button ?disabled="${!this._key}" theme="primary error" @click="${() => this._borraReceta()}">Borrar Receta</vaadin-button>          
       </vaadin-form-layout>
       <h5 style="color: ${this._qr? 'black':'rgba(0,0,0,.3)'}">Resultado: QR Receta ${this._qr? okLogo : ''}</h5>
       ${navigator.canShare? html`
-          <mwc-icon-button icon="share" ?disabled="${!this._qr}" style="float: right; background: rgba(0,0,0,.75); color: white; border-radius: 50%;" @click="${() => this._compartePNG()}" aria-label="Compartir QR"></mwc-icon-button>
+          <mwc-icon-button icon="share" ?disabled="${!this._qr}" style="position: absolute; right: 24px; background: rgba(0,0,0,.75); color: white; border-radius: 50%;" @click="${() => this._compartePNG()}" aria-label="Compartir QR"></mwc-icon-button>
+          <mwc-icon-button icon="print" ?disabled="${!this._qr}" style="position: absolute; right: 24px; margin-top: 80px; background: rgba(0,0,0,.75); color: white; border-radius: 50%;" @click="${() => this._printPNG(this._receta)}" aria-label="Imprimir QR"></mwc-icon-button>
         `:html`
-          <mwc-icon-button icon="print" ?disabled="${!this._qr}" style="float: right; background: rgba(0,0,0,.75); color: white; border-radius: 50%;" @click="${() => this._printPNG()}" aria-label="Imprimir QR"></mwc-icon-button>
+          <mwc-icon-button icon="print" ?disabled="${!this._qr}" style="float: right; background: rgba(0,0,0,.75); color: white; border-radius: 50%;" @click="${() => this._printPNG(this._receta)}" aria-label="Imprimir QR"></mwc-icon-button>
         `} 
       <br>
       <div class="receta">       
@@ -337,32 +338,44 @@ export class PageOne extends LitElement {
           })
           .catch((error) => console.log('Sharing failed', error));
         } else {
+          alert('Su dispositivo no permire compartir archivos desde navegador web');
           console.log(`Your system doesn't support sharing files.`);
         }
       });
   }
-  _printPNG(){
-    var img = this.shadowRoot.querySelector('#qrCode').shadowRoot.querySelector('img');
-    fetch(img.src)
-      .then(r => r.blob())
-      .then(async b => {
-        var objectURL = await URL.createObjectURL(b);
-        img.src = await objectURL;
-      }).then(() => {
-        var popup;
 
-        function closePrint () {
-            if ( popup ) {
-                popup.close();
-            }
-        }
+  async _printPNG(r){
+    let pdf = new jsPDF();
+    let imgElem = await this.shadowRoot.querySelector('#qrCode').shadowRoot.querySelector('img');
+    let imgSrc = imgElem.src;
 
-        popup = window.open(img.src);
-        popup.onbeforeunload = closePrint;
-        popup.onafterprint = closePrint;
-        popup.focus(); // Required for IE
-        popup.print();
-      });   
+    let width = pdf.internal.pageSize.getWidth();
+    let height = pdf.internal.pageSize.getHeight();
+    pdf.addImage(imgSrc, 'PNG', 50, 100, (width - 100), (width - 100));
+    pdf.setFontSize(11);
+    pdf.text(`Nombre: ${r.nombrePte}`, 50, 22, 'left');
+    pdf.text(`RUT: ${r.rutPte}`, 50, 32, 'left');
+    pdf.text(`RUT: ${r.rpPte}`, 50, 42, 'left');
+    pdf.setFontSize(9);
+    pdf.text(`Médico: ${this._nombreMed}`, 50, 82, 'left');
+    pdf.text(`Médico: ${this._rutDoc}`, 50, 92, 'left');
+    pdf.setProperties({
+        title: `Receta ${r.nombrePte}`,
+        creator: 'creado con e-receta.cl'
+    }); 
+    if (navigator.share) {
+      pdf.output('dataurlnewwindow', `Receta ${r.nombrePte}`);
+    } else {
+      let iframe = document.createElement('iframe');
+      iframe.id = "iprint";
+      iframe.src = pdf.output('bloburl');
+      iframe.setAttribute('style', 'display: none;');
+      document.body.appendChild(iframe);
+      iframe.onload = function() {
+          iframe.focus();
+          iframe.contentWindow.print();
+      };
+    }   
   }
   _validaRut(e){
       this.shadowRoot.querySelector('#rutDoc').checkValidity = () => {     
@@ -459,13 +472,19 @@ export class PageOne extends LitElement {
     creaReceta(datos)
     .then(async r => {
       this._qr = r.data;
+      if(r.data == 'DATOS INCOMPLETOS'){
+        alert('Error: Datos de receta incompletos');
+      }
+      if(r.data == 'CREDENCIALES INCOMPLETAS'){
+        alert('Error: No cuenta con permisos actualizados');
+      }
       this.shadowRoot.querySelector('#fraseClave').value = '';
       this._fraseClave = '';
       this._spinner = false;
     }).catch(e => {
       console.log(e);
       this._spinner = false;
-      alert('Error, no se pudo generar receta');
+      alert('Error: No se pudo generar receta');
     });
   }
   _signIn() {

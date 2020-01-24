@@ -197,6 +197,15 @@ exports.creaFirma = functions.https.onCall(async (datos, context) => {
 	});
 });
 
+async function registraReceta(u, rp, rut){
+	let recetas = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('RECETAS');
+	return recetas.add({
+		u: u,
+		rp: rp,
+		rut: rut
+	});
+}
+
 exports.creaReceta = functions.https.onCall(async (datos, context) => {
 	if (!(context.auth && context.auth.token)) {
 	  throw new functions.https.HttpsError(
@@ -215,6 +224,10 @@ exports.creaReceta = functions.https.onCall(async (datos, context) => {
 
 			const pass = data.pass;
 			const receta = data.receta; 
+
+			if(!receta.nombrePte || !receta.rutPte || !receta.rpPte){
+				return 'DATOS INCOMPLETOS';
+			}
 
 			let firma = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('CREDENCIALES').get()
 			.then(async r => {
@@ -250,6 +263,7 @@ exports.creaReceta = functions.https.onCall(async (datos, context) => {
 			};
 			return pgp.encrypt(options).then(async ciphertext => {
 			    qrData = await ciphertext.data; 
+			    registraReceta(context.auth.uid, receta.rpPte, receta.rutPte);
 			    return qrData;
 			});
 		} else {
