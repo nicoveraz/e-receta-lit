@@ -194,13 +194,11 @@ export class PageOne extends LitElement {
     return html`
     <div id="eReceta">
       <mwc-icon-button ?disabled=${!this._user} icon="close" style="float: right" @click="${() => this._salir()}" aria-label="Salir"></mwc-icon-button>
-      <vaadin-form-layout class="form">
-        <h5 colspan="2">Paso 1: Validar cuenta de correo electrónico ${this._user? okLogo : ''}</h5>
-        <p colspan="2">(Puede ser cualquiera, con fines de prueba por ahora sólo Gmail. Único paso necesario por ahora para acceder al lector QR)</p>
-        <div>
-          <vaadin-button theme="primary" @click="${() => this._signIn()}" ?disabled=${this._user}>Ingresar con Google</vaadin-button>          
-        </div>
-      </vaadin-form-layout>
+      <h5>Paso 1: Validar cuenta de correo electrónico ${this._user? okLogo : ''}</h5>
+      <p>(Puede ser cualquiera, con fines de prueba por ahora sólo Gmail. Único paso necesario por ahora para acceder al lector QR)</p>
+      <div>
+        <vaadin-button theme="primary" @click="${() => this._signIn()}" ?disabled=${this._user}>Ingresar con Google</vaadin-button>          
+      </div>
       <vaadin-form-layout class="form">
         <h5 colspan="2" style="color: ${this._user? 'black':'rgba(0,0,0,.3)'}">Paso 2: Validar Médico ${this._generaClave? okLogo : ''}</h5>
         <p colspan="2" style="color: ${this._user? 'black':'rgba(0,0,0,.3)'}">(Sólo una vez: ingresar RUT y número de serie, con ello se obtiene registro Superintendencia de Salud, para validar el RUT es necesario completar, antes de 20 segundos, el texto del CAPTCHA)</p>
@@ -316,13 +314,16 @@ export class PageOne extends LitElement {
     fetch(img.src)
       .then(r => r.blob())
       .then(b => {
-        const file = new File([b], 'QR-Receta.png', b); 
+        let file = new File([b], 'QR-Receta.png', b); 
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           navigator.share({
             files: [file],
             title: 'QR de e-receta'
           })
-          .then(() => console.log('Share was successful.'))
+          .then(() => {
+            console.log('Share was successful.');
+            file = null;
+          })
           .catch((error) => console.log('Sharing failed', error));
         } else {
           console.log(`Your system doesn't support sharing files.`);

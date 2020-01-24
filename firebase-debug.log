@@ -1,0 +1,26 @@
+[debug] [2020-01-24T00:52:31.510Z] ----------------------------------------------------------------------
+[debug] [2020-01-24T00:52:31.512Z] Command:       /usr/local/bin/node /usr/local/bin/firebase deploy --only hosting
+[debug] [2020-01-24T00:52:31.513Z] CLI Version:   7.12.1
+[debug] [2020-01-24T00:52:31.513Z] Platform:      darwin
+[debug] [2020-01-24T00:52:31.513Z] Node Version:  v10.15.1
+[debug] [2020-01-24T00:52:31.515Z] Time:          Thu Jan 23 2020 21:52:31 GMT-0300 (Chile Summer Time)
+[debug] [2020-01-24T00:52:31.515Z] ----------------------------------------------------------------------
+[debug] [2020-01-24T00:52:31.515Z] 
+[debug] [2020-01-24T00:52:31.543Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2020-01-24T00:52:31.544Z] > authorizing via signed-in user
+[debug] [2020-01-24T00:52:31.545Z] [iam] checking project e-receta-4b81d for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2020-01-24T00:52:31.549Z] >>> HTTP REQUEST POST https://cloudresourcemanager.googleapis.com/v1/projects/e-receta-4b81d:testIamPermissions  
+
+[debug] [2020-01-24T00:52:32.739Z] <<< HTTP RESPONSE 200
+[debug] [2020-01-24T00:52:32.744Z] >>> HTTP REQUEST GET https://firebase.googleapis.com/v1beta1/projects/e-receta-4b81d  
+ 
+[debug] [2020-01-24T00:52:33.899Z] <<< HTTP RESPONSE 200
+[info] 
+[info] === Deploying to 'e-receta-4b81d'...
+[info] 
+[info] i  deploying hosting
+[debug] [2020-01-24T00:52:39.046Z] >>> HTTP REQUEST POST https://firebasehosting.googleapis.com/v1beta1/sites/e-receta-4b81d/versions  
+
+[debug] [2020-01-24T00:52:40.804Z] <<< HTTP RESPONSE 200
+[info] i  hosting[e-receta-4b81d]: beginning deploy...
+[info] i  hosting[e-receta-4b81d]: found 24 files in dist
