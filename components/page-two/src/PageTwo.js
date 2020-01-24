@@ -3,6 +3,7 @@ import { render } from 'lit-html';
 import { IconButtonToggle } from '@material/mwc-icon-button-toggle/mwc-icon-button-toggle.js';
 import { IconButton } from '@material/mwc-icon-button/mwc-icon-button.js';
 import '@vaadin/vaadin-dialog/theme/lumo/vaadin-dialog.js';
+import 'dile-spinner/dile-spinner.js';
 
 import '@vaadin/vaadin-text-field/theme/lumo/vaadin-number-field.js';
 import '@vaadin/vaadin-text-field/theme/lumo/vaadin-text-field.js';
@@ -70,15 +71,20 @@ export class PageTwo extends LitElement {
         text-align: center;
         color: white;
         background-color: black;
-        height: 100%; 
-        width: 100vw;
         position: fixed;
-        top: 0;
-        left: 0;
         display: flex;
+        margin-top: 100px;
         justify-content: center;
         align-items: center;
         z-index: 1000;
+      }
+      dile-spinner {
+        z-index: 100;
+        position: fixed;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1001;
       }
     `;
   }
@@ -117,6 +123,9 @@ export class PageTwo extends LitElement {
       },
       _rutMed: {
         type: String
+      },
+      _spinner: {
+        type: Boolean
       }
     };
   }
@@ -128,6 +137,7 @@ export class PageTwo extends LitElement {
     this._dialogQR = false;
     this._toggle = false;
     this._receta = '';
+    this._spinner = true;
     this._boundDialogRenderer = this.dialogRenderer.bind(this);
   }
 
@@ -137,6 +147,7 @@ export class PageTwo extends LitElement {
     <div class="fondo">  
         <mwc-icon-button-toggle id="toggle" ?on="${this._toggle}" offIcon="close" onIcon="videocam" @click="${() => this._camToggle()}"></mwc-icon-button-toggle>
         <mwc-icon-button-toggle ?on=${this._camaraFrontal} onIcon="camera_rear" offIcon="camera_front" ?disabled="${!this._selectCamara}" @click="${() => this._cambiaCamara()}"></mwc-icon-button-toggle>
+        <dile-spinner ?active="${this._spinner}"></dile-spinner>
         <video id="video" class="preview"></video>             
         ${this._user? html`         
           ` : html`
@@ -184,8 +195,10 @@ export class PageTwo extends LitElement {
         desencriptaQR({user: this._user, qr: this._resQR})
         .then(r => {
           if(r.data == 'no verificado'){
+            this._spinner = false;
             alert('QR no verificado, receta inválida');
           } else if(r.data == 'vendida'){
+            this._spinner = false;
             alert('Receta ya vendida');
           } else {
             this._receta = JSON.parse(r.data);
@@ -195,6 +208,7 @@ export class PageTwo extends LitElement {
               this._rutMed = await datos.rut;
               this._nombreMed = await datos.nombreMed;
             }).then(() => {
+              this._spinner = false;
               this._dialogQR = true;
             });
           }
@@ -215,6 +229,7 @@ export class PageTwo extends LitElement {
     this._escaneaQR();
   }
   _escaneaQR(){
+    this._spinner = false;
     var user = firebase.auth().currentUser;
     if(!user){
       return;
@@ -223,6 +238,7 @@ export class PageTwo extends LitElement {
       if (result) {
         // properly decoded qr code
         this._resQR = result;
+        this._spinner = true;
         codeReader.reset();
       }
 

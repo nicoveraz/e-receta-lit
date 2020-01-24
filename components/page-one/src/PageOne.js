@@ -5,6 +5,7 @@ import '@vaadin/vaadin-text-field/theme/lumo/vaadin-text-field.js';
 import '@vaadin/vaadin-text-field/theme/lumo/vaadin-text-area.js';
 import '@vaadin/vaadin-button/theme/lumo/vaadin-button.js';
 import '@vaadin/vaadin-form-layout/vaadin-form-layout.js';
+import 'dile-spinner/dile-spinner-modal.js';
 import 'webcomponent-qr-code';
 import { IconButton } from '@material/mwc-icon-button/mwc-icon-button.js';
 
@@ -104,6 +105,11 @@ export class PageOne extends LitElement {
         --mdc-theme-text-disabled-on-light: white;
         opacity: .4;
       }
+      dile-spinner-modal {
+        --dile-spinner-color: white;
+        --dile-spinner-modal-background-color: rgba(0,0,0,.5);
+        --dile-spinner-modal-box-color: transparent;
+      }
     `;
   }
 
@@ -159,6 +165,9 @@ export class PageOne extends LitElement {
       },
       _qr: {
         type: String
+      },
+      _spinner: {
+        type: Boolean
       }
     };
   }
@@ -178,6 +187,7 @@ export class PageOne extends LitElement {
     this._captEnviado = false;
     this._passphrase = '';
     this._key = '';
+    this._spinner = false;
     this._fraseClave = '';
     this._receta = {};
     this._qr = '';
@@ -206,8 +216,8 @@ export class PageOne extends LitElement {
           <img ?hidden=${!this._captcha} src="data:image/png;base64,${this._captcha}">
         </div>
         <div>
-          <vaadin-text-field label="Texto Captcha (minúsculas)" class="texto-captcha" .value="${this._txtCaptcha}" @input="${e => this._txtCaptcha = e.target.value}" ?disabled=${!this._captcha}></vaadin-text-field>       
-          <vaadin-button theme="primary" ?disabled=${!this._captcha} @click="${() => {this._enviaCaptcha(this._txtCaptcha); this._captEnviado = true}}">Enviar</vaadin-button>            
+          <vaadin-text-field label="Texto CAPTCHA (minúsculas)" ?invalid="${(this._captcha || !this._txtCaptcha)}" error-message="Ingresar CAPTCHA (antes de 20 seg)" class="texto-captcha" .value="${this._txtCaptcha}" @input="${e => this._txtCaptcha = e.target.value}" ?disabled=${!this._captcha}></vaadin-text-field>       
+          <vaadin-button theme="primary" ?disabled=${!this._captcha} @click="${() => {this._enviaCaptcha(this._txtCaptcha); this._captEnviado = true; this._spinner = true;}}">Enviar</vaadin-button>            
         </div>
         <vaadin-text-field label="Estado Cédula Identidad" readonly .value="${(this._serieValida === true)? 'Cédula de Identidad Vigente': (this._serieValida === false)? 'No Vigente' : (this._serieValida === 'ERROR')? 'Error' : 'Pendiente'}" ?disabled=${!this._user}></vaadin-text-field>       
         <vaadin-text-field label="Registro Superintendencia" .value="${(this._medValido === true)? 'Médico Cirujano': (this._medValido === true)? 'No Registrado' : 'Pendiente'}" readonly ?disabled=${!this._user}></vaadin-text-field><br>      
@@ -244,6 +254,7 @@ export class PageOne extends LitElement {
         <qr-code id="qrCode" format="png" modulesize="3" ?hidden="${!this._qr}" .data="${this._qr}"></qr-code>   
       </div>
     <div>
+    <dile-spinner-modal ?active="${this._spinner}"></dile-spinner-modal>
     `;
   }
   firstUpdated(){
@@ -408,11 +419,16 @@ export class PageOne extends LitElement {
     }
     const validaMed = firebase.functions().httpsCallable('validaMed');
     const validaRutSerie = firebase.functions().httpsCallable('validaSerie');
+    this._spinner = true;
     validaMed({uid: this._user, rut: r})
     .then(res => {
+      this._spinner = false;
       this._medValido = (res.data.prestador.codigoBusqueda == "Médico Cirujano");
+    })
+    .then(res => {
       validaRutSerie({uid: u, rut: r, serie: s})
       .then(d => {
+        this.spinner = false;
         this._serieValida = (d.data.message == 'Vigente');
       });
     })
@@ -425,28 +441,42 @@ export class PageOne extends LitElement {
       throw new Error('Datos incompletos');
     }
     const creaFirma = firebase.functions().httpsCallable('creaFirma');
+    this._spinner = true;
     creaFirma({user: u, passphrase: p})
     .then(async r => {
       console.log(r);
+      this._spinner = false;
       this._passphrase = null;
+    }).catch(e => {
+      this._spinner = false;
+      alert(e);
     });
   }
   _creaReceta(r, p){
     const datos = {receta: r, pass: p, user: this._user};
     const creaReceta = firebase.functions().httpsCallable('creaReceta');
+    this._spinner = true;
     creaReceta(datos)
     .then(async r => {
       this._qr = r.data;
       this.shadowRoot.querySelector('#fraseClave').value = '';
       this._fraseClave = '';
+      this._spinner = false;
     }).catch(e => {
       console.log(e);
+      this._spinner = false;
       alert('Error, no se pudo generar receta');
     });
   }
   _signIn() {
     var provider = new firebase.auth.GoogleAuthProvider();
-    firebase.auth().signInWithPopup(provider);
+    this._spinner = true;
+    firebase.auth().signInWithPopup(provider).then(r => {
+      this._spinner = false;
+    }).catch(e => {
+      this._spinner = false;
+      alert(e);
+    });
   }
   _salir(){
     firebase.auth().signOut()
