@@ -39,22 +39,18 @@
         navigator.serviceWorker.register('./sw.js');
       });
     }
-
-    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-       navigator.serviceWorker.controller.onstatechange = function(event) {
-         if (event.target.state === 'redundant') {
-           console.log('Nueva version disponible');
-           window.alert('Nueva version disponible');
-           navigator.serviceWorker.getRegistration().then(function(reg) {
-             if (reg) {
-               reg.unregister().then(function() { window.location.reload(true); });
-             } else {
-                window.location.reload(true);
-             }
-           });
-         }
-      };
-    }   
+    window.isUpdateAvailable = new Promise(function(resolve, reject) {
+      if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+         navigator.serviceWorker.controller.onstatechange = function(event) {
+           if (event.target.state === 'redundant') {
+             console.log('Nueva version disponible');
+             resolve(true);           
+           } else {
+             resolve(false);
+           }
+        };
+      } 
+    });     
   </script>
   <title>eReceta NewtriLabs</title>
 </head>

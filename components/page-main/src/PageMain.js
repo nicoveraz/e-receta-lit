@@ -86,9 +86,9 @@ export class PageMain extends LitElement {
       <h1>Bienvenido a</h1>
       <h1>e-receta</h1>
       <h3>Experimento de NewtriLabs</h3>
+      <p class="texto">Receta encriptada y firmada con esquema llave pública/privada de 256bits, en código QR que puede ser compartido a dispositivos móviles, email o impreso</p>
+      <p class="texto">Lector público, sólo restringido a acceso con email, podría ser bloqueado a sólo usuarios autorizados, por ejemplo, de farmacias. Graba en base de datos si receta fue despachada, evitando doble venta de producto, lo que permitiría recetas digitales "retenidas"</p>
       <p class="texto"><strong>Importante:</strong> A pesar de ser seguro y basarse en últimas tecnologías de encriptación, este proyecto aún no cumple con legislación chilena, pues no cuenta con Firma Digital Avanzada para cada médico <i>(Requerimiento, en nuestra opinión, completamente innecesario)</i></p>
-      <p class="texto">Receta encriptada y firmada con esquema llave pública/privada de 256bits</p>
-      <p class="texto">Lector público, sólo restringido a acceso con email, podría ser bloqueado a sólo usuarios autorizados, de farmacias. Graba en base de datos si receta fue despachada, evitando doble venta de producto, lo que permitiría recetas digitales "retenidas"</p>
       <p><strong>No debe ser utilizada para recetas reales</strong></p>
       <p>Si está interesado en este proyecto y necesita más información envíenos un <a href="mailto:contacto@newtri.cl?Subject=eReceta" target="_blank" rel="noopener noreferrer">email<a></p>
     </div>

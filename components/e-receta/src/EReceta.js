@@ -6,12 +6,16 @@ import { setPassiveTouchGestures } from '@polymer/polymer/lib/utils/settings.js'
 import '../../page-main/page-main.js';
 import '../../page-one/page-one.js';
 import '../../page-two/page-two.js';
+import './snack-bar.js';
+
+import '@vaadin/vaadin-button/theme/lumo/vaadin-button.js';
 
 export class EReceta extends LitElement {
   static get properties() {
     return {
       title: { type: String },
       page: { type: String },
+      _snackbarOpened: { type: Boolean }
     };
   }
 
@@ -86,6 +90,9 @@ export class EReceta extends LitElement {
           min-width: 100px;
         }
       }
+      snack-bar vaadin-button{
+        margin-left: 12px;
+      }
     `;
   }
 
@@ -93,6 +100,7 @@ export class EReceta extends LitElement {
     super();
     setPassiveTouchGestures(true);
     this.page = 'main';
+    this._snackbarOpened = false;
   }
 
   render() {
@@ -125,7 +133,17 @@ export class EReceta extends LitElement {
         Hecho por <a target="_blank" rel="noopener noreferrer" href="https://newtri.cl">NewtriLabs</a>
         © ${new Date().getFullYear()}
       </p>
+      <snack-bar ?active="${this._snackbarOpened}">
+        Nueva versión disponible 
+        <vaadin-button theme="primary" @click="${() => window.location.reload(true)}">Recargar</vaadin-button>
+      </snack-bar>
     `;
+  }
+  firstUpdated(){
+    window['isUpdateAvailable']
+    .then(update => {
+      this.shadowRoot.querySelector('#nuevaVersion').open();
+    });
   }
 
   _renderPage() {
