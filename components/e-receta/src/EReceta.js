@@ -61,11 +61,11 @@ export class EReceta extends LitElement {
       }
 
       header ul li a:hover {
-        color: #1676f3;
+        color: #004ba0;
       }
       header ul li a.active {
-        color: #1676f3;
-        border-bottom: solid 3px #1676f3;
+        color: #004ba0;
+        border-bottom: solid 3px #004ba0;
       }
 
       main {
@@ -100,7 +100,6 @@ export class EReceta extends LitElement {
     super();
     setPassiveTouchGestures(true);
     this.page = 'main';
-    this._snackbarOpened = false;
   }
 
   render() {
@@ -142,7 +141,7 @@ export class EReceta extends LitElement {
   firstUpdated(){
     window['isUpdateAvailable']
     .then(update => {
-      this.shadowRoot.querySelector('#nuevaVersion').open();
+      this.shadowRoot.querySelsector('#nuevaVersion').open();
     });
   }
 

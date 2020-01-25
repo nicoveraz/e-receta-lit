@@ -8,6 +8,8 @@
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" href="./images/favicon.ico">
   <link rel="apple-touch-icon" sizes="192x192" href="./images/manifest/icon-192x192.png">
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="preconnect" href="https://storage.googleapis.com">
   <base href="/">
   <style>
     @font-face {
@@ -36,21 +38,28 @@
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js');
+        navigator.serviceWorker.register('./sw.js')
+        .then(reg => {
+                reg.onupdatefound = () => {
+                  const installingWorker = reg.installing;
+                  installingWorker.onstatechange = () => {
+                    switch (installingWorker.state) {
+                      case 'installed':
+                        if (navigator.serviceWorker.controller) {
+                          console.log('Nueva version disponible');
+                          window.isUpdateAvailable = true;
+                        } else {
+                          console.log('Actualizado');
+                          window.isUpdateAvailable = false;
+                        }
+                        break;
+                    }
+                  };
+                };
+              })
+              .catch(err => console.error('[SW ERROR]', err));
       });
-    }
-    window.isUpdateAvailable = new Promise(function(resolve, reject) {
-      if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-         navigator.serviceWorker.controller.onstatechange = function(event) {
-           if (event.target.state === 'redundant') {
-             console.log('Nueva version disponible');
-             resolve(true);           
-           } else {
-             resolve(false);
-           }
-        };
-      } 
-    });     
+    }     
   </script>
   <title>eReceta NewtriLabs</title>
 </head>
