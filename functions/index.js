@@ -197,12 +197,25 @@ exports.creaFirma = functions.https.onCall(async (datos, context) => {
 	});
 });
 
+async function cyrb53(str, seed = 0) {
+    let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+    for (let i = 0, ch; i < str.length; i++) {
+        ch = str.charCodeAt(i);
+        h1 = Math.imul(h1 ^ ch, 2654435761);
+        h2 = Math.imul(h2 ^ ch, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ h1>>>16, 2246822507) ^ Math.imul(h2 ^ h2>>>13, 3266489909);
+    h2 = Math.imul(h2 ^ h2>>>16, 2246822507) ^ Math.imul(h1 ^ h1>>>13, 3266489909);
+    return 4294967296 * (2097151 & h2) + (h1>>>0);
+};
+
 async function registraReceta(u, rp, rut, id){
-	let recetas = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('RECETAS');
+	let recetas = await firestoreRef.collection('MEDICOS').doc(u).collection('RECETAS');
+	const idPte = await cyrb53(rut);
 	return recetas.add({
 		u: u,
 		rp: rp,
-		rut: rut,
+		idPte: idPte,
 		id: id
 	});
 }
@@ -235,12 +248,15 @@ exports.creaReceta = functions.https.onCall(async (datos, context) => {
 				return await r.data().clavePrivada;
 			});
 
-			let apkey = await firestoreRef.collection('APP').doc('CRED').get()
-			.then(async r => {
-				const pubK = await r.data().clavePublica;
-				const pubKR = await pgp.key.readArmored(pubK);
-				return pubKR.keys;
-			}).catch(e => console.log('ERROR apkey: ', e));
+			const pubK = await functions.config().app.key;
+			const pubKR = await pgp.key.readArmored(pubK);
+
+			// let apkey = await firestoreRef.collection('APP').doc('CRED').get()
+			// .then(async r => {
+			// 	const pubK = await r.data().clavePublica;
+			// 	const pubKR = await pgp.key.readArmored(pubK);
+			// 	return pubKR.keys;
+			// }).catch(e => console.log('ERROR apkey: ', e));
 
 			let privKeyObj = (await pgp.key.readArmored(firma)).keys[0];
 			await privKeyObj.decrypt(pass);
@@ -285,15 +301,17 @@ exports.procesaQR = functions.https.onCall(async (datos, context) => {
 		);
 	}
 	const msg = datos.qr.text;
+	const firma = functions.config().priv.key;
+	// let firma = await firestoreRef.collection('APP').doc('CRED').get()
+	// .then(async r => {
+	// 	return await r.data().clavePrivada;
+	// });
+	const pPh = functions.config().pph.key;
 
-	let firma = await firestoreRef.collection('APP').doc('CRED').get()
-	.then(async r => {
-		return await r.data().clavePrivada;
-	});
-	let pPh = await firestoreRef.collection('APP').doc('CRED').get()
-	.then(async r => {
-		return await r.data().passPhrase;
-	});
+	// let pPh = await firestoreRef.collection('APP').doc('CRED').get()
+	// .then(async r => {
+	// 	return await r.data().passPhrase;
+	// });
 
 	let prKObj = (await pgp.key.readArmored(firma)).keys[0];
 	await prKObj.decrypt(pPh);

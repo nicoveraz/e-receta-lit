@@ -164,13 +164,7 @@ export class EReceta extends LitElement {
   }
 
   rld(){
-    navigator.serviceWorker.getRegistration().then(function(reg) {
-      if (reg) {
-        reg.unregister().then(function() { window.location.reload(true); });
-      } else {
-         window.location.reload(true);
-      }
-    });
+    window.location.reload(true);
   }
 
   __onNavClicked(ev) {

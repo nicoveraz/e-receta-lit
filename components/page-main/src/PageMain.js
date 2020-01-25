@@ -56,6 +56,15 @@ export class PageMain extends LitElement {
         }
       }
 
+      @media(min-width: 640px) {
+        .titulo {
+          display: inline-block;
+        }
+        h1:first-of-type{
+          margin-right: 8px; 
+        }
+      }
+
       @keyframes app-logo-spin {
         from {
           transform: rotate(0deg);
@@ -63,6 +72,10 @@ export class PageMain extends LitElement {
         to {
           transform: rotate(360deg);
         }
+      }
+
+      .version {
+        margin-top: -40px;
       }
     `;
   }
@@ -83,8 +96,11 @@ export class PageMain extends LitElement {
     return html`
     <div id="eReceta">
       ${this.logo}
-      <h1>Bienvenido a</h1>
-      <h1>e-receta</h1>
+      <div>
+        <h1 class="titulo">Bienvenido a</h1>
+        <h1 class="titulo">e-receta</h1>
+      </div>
+      <p class="version">Versión 0.1b</p>
       <h3>Experimento de NewtriLabs</h3>
       <p class="texto">Receta encriptada y firmada con esquema llave pública/privada de 256bits, en código QR que puede ser compartido a dispositivos móviles, email o impreso</p>
       <p class="texto">Lector público, sólo restringido a acceso con email, podría ser bloqueado a sólo usuarios autorizados, por ejemplo, de farmacias. Graba en base de datos si receta fue despachada, evitando doble venta de producto, lo que permitiría recetas digitales "retenidas"</p>

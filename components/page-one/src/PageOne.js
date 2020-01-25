@@ -351,14 +351,17 @@ export class PageOne extends LitElement {
 
     let width = pdf.internal.pageSize.getWidth();
     let height = pdf.internal.pageSize.getHeight();
-    pdf.addImage(imgSrc, 'PNG', 50, 100, (width - 100), (width - 100));
+    pdf.addImage(imgSrc, 'PNG', 50, 140, (width - 100), (width - 100));
+    pdf.setFontSize(12);
+    pdf.text('DATOS REFERENCIALES, RECETA EN CÓDIGO QR', 50, 32, 'left');
     pdf.setFontSize(11);
-    pdf.text(`Nombre: ${r.nombrePte}`, 50, 22, 'left');
-    pdf.text(`RUT: ${r.rutPte}`, 50, 32, 'left');
-    pdf.text(`Rp: ${r.rpPte}`, 50, 42, 'left');
+    pdf.text(`Nombre: ${r.nombrePte}`, 50, 42, 'left');
+    pdf.text(`RUT: ${r.rutPte}`, 50, 50, 'left');
+    pdf.text(`Rp:`, 50, 58, 'left');
+    pdf.text(`${r.rpPte}`, 50, 66, 'left');
     pdf.setFontSize(9);
-    pdf.text(`Médico: ${this._nombreMed}`, 50, 82, 'left');
-    pdf.text(`Médico: ${this._rutDoc}`, 50, 92, 'left');
+    pdf.text(`Médico: ${this._nombreMed}`, 50, 116, 'left');
+    pdf.text(`RUT: ${this._rutDoc}`, 50, 124, 'left');
     pdf.setProperties({
         title: `Receta ${r.nombrePte}`,
         creator: 'creado con e-receta.cl'
