@@ -216,7 +216,7 @@ export class PageOne extends LitElement {
           <img ?hidden=${!this._captcha} src="data:image/png;base64,${this._captcha}">
         </div>
         <div>
-          <vaadin-text-field label="Texto CAPTCHA (minúsculas)" ?invalid="${(this._captcha || !this._txtCaptcha)}" error-message="Ingresar CAPTCHA (antes de 20 seg)" class="texto-captcha" .value="${this._txtCaptcha}" @input="${e => this._txtCaptcha = e.target.value}" ?disabled=${!this._captcha}></vaadin-text-field>       
+          <vaadin-text-field label="Texto CAPTCHA (minúsculas)" ?invalid="${(this._captcha && !this._txtCaptcha)}" error-message="Ingresar CAPTCHA (antes de 20 seg)" class="texto-captcha" .value="${this._txtCaptcha}" @input="${e => this._txtCaptcha = e.target.value}" ?disabled=${!this._captcha}></vaadin-text-field>       
           <vaadin-button theme="primary" ?disabled=${!this._captcha} @click="${() => {this._enviaCaptcha(this._txtCaptcha); this._captEnviado = true; this._spinner = true;}}">Enviar</vaadin-button>            
         </div>
         <vaadin-text-field label="Estado Cédula Identidad" readonly .value="${(this._serieValida === true)? 'Cédula de Identidad Vigente': (this._serieValida === false)? 'No Vigente' : (this._serieValida === 'ERROR')? 'Error' : 'Pendiente'}" ?disabled=${!this._user}></vaadin-text-field>       
@@ -233,14 +233,14 @@ export class PageOne extends LitElement {
       </vaadin-form-layout>
       <vaadin-form-layout class="form">
         <h5 colspan="2" style="min-width: 300px; color: ${this._key? 'black':'rgba(0,0,0,.3)'}">Paso 4: Receta</h5>            
-        <vaadin-text-field required colspan="2" label="Nombre" ?disabled=${!this._key} id="nombrePte" @input="${e => this._receta.nombrePte = e.target.value}"></vaadin-text-field>      
+        <vaadin-text-field required error-message="Requerido" colspan="2" label="Nombre" ?disabled=${!this._key} id="nombrePte" @input="${e => this._receta.nombrePte = e.target.value}"></vaadin-text-field>      
         <vaadin-number-field label="Edad" ?disabled=${!this._key} id="edadPte" @input="${e => this._receta.edadPte = e.target.value}"></vaadin-number-field>      
         <vaadin-text-field required label="RUT" error-message="Rut inválido" ?disabled=${!this._key} id="rutPte" @input="${e => {e.target.value = `${e.target.value === '-'? e.target.value.replace('-', '') : e.target.value.split('').pop() != '-'? e.target.value.replace('-','').slice(0, -1) + '-' + e.target.value.slice(-1): e.target.value.replace('-','')}`; this._receta.rutPte = e.target.value; this._validaRutPte(e.target.value)}}"></vaadin-text-field>
         <vaadin-text-field colspan="2" label="Dirección" ?disabled=${!this._key} id="direccionPte" @input="${e => this._receta.direccionPte = e.target.value}"></vaadin-text-field>      
         <div class="flotaIzq" style="margin-right: 8px;"></div><vaadin-text-field class="dato" label="Fecha" readonly ?disabled=${!this._key} value="${new Date().toLocaleDateString()}"></vaadin-text-field>
-        <vaadin-text-area required colspan="2" class="rp" label="Rp." ?disabled="${(!this._key || !this._receta.nombrePte || !this._receta.rutPte || this._receta.rpPte)}" id="rpPte" @input="${e => this._receta.rpPte = e.target.value}"></vaadin-text-area> 
+        <vaadin-text-area required error-message="Requerido" colspan="2" class="rp" label="Rp." ?disabled="${(!this._key)}" id="rpPte" @input="${e => this._receta.rpPte = e.target.value}"></vaadin-text-area> 
         <vaadin-password-field required label="Frase Clave" id="fraseClave" ?disabled=${!this._key} @input="${e => this._fraseClave = e.target.value}"></vaadin-password-field>      
-        <vaadin-button ?disabled="${(!this._fraseClave || !this._key || !this._receta.nombrePte || !this._receta.rutPte || this._receta.rpPte)}" theme="primary" @click="${() => {this._creaReceta(this._receta, this._fraseClave);}}">Crear Receta</vaadin-button> 
+        <vaadin-button ?disabled="${(!this._fraseClave || !this._key || !this._receta.nombrePte || !this._receta.rutPte || !this._receta.rpPte)}" theme="primary" @click="${() => {this._creaReceta(this._receta, this._fraseClave);}}">Crear Receta</vaadin-button> 
         <div style="margin-right: 1px;"></div><vaadin-button ?disabled="${!this._key}" theme="primary error" @click="${() => this._borraReceta()}">Borrar Receta</vaadin-button>          
       </vaadin-form-layout>
       <h5 style="color: ${this._qr? 'black':'rgba(0,0,0,.3)'}">Resultado: QR Receta ${this._qr? okLogo : ''}</h5>
@@ -441,7 +441,7 @@ export class PageOne extends LitElement {
     .then(res => {
       validaRutSerie({uid: u, rut: r, serie: s})
       .then(d => {
-        this.spinner = false;
+        this._spinner = false;
         this._serieValida = (d.data.message == 'Vigente');
       });
     })

@@ -100,6 +100,9 @@ export class EReceta extends LitElement {
     super();
     setPassiveTouchGestures(true);
     this.page = 'main';
+    window['isUpdateAvailable'].then(r => {
+      this._snackbarOpened = true;
+    });
   }
 
   render() {
@@ -137,12 +140,6 @@ export class EReceta extends LitElement {
         <vaadin-button theme="primary" @click="${() => window.location.reload(true)}">Recargar</vaadin-button>
       </snack-bar>
     `;
-  }
-  firstUpdated(){
-    window['isUpdateAvailable']
-    .then(update => {
-      this.shadowRoot.querySelsector('#nuevaVersion').open();
-    });
   }
 
   _renderPage() {
