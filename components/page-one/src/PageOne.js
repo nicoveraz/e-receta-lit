@@ -355,7 +355,7 @@ export class PageOne extends LitElement {
     pdf.setFontSize(11);
     pdf.text(`Nombre: ${r.nombrePte}`, 50, 22, 'left');
     pdf.text(`RUT: ${r.rutPte}`, 50, 32, 'left');
-    pdf.text(`RUT: ${r.rpPte}`, 50, 42, 'left');
+    pdf.text(`Rp: ${r.rpPte}`, 50, 42, 'left');
     pdf.setFontSize(9);
     pdf.text(`Médico: ${this._nombreMed}`, 50, 82, 'left');
     pdf.text(`Médico: ${this._rutDoc}`, 50, 92, 'left');

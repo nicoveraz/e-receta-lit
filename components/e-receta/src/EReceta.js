@@ -137,7 +137,7 @@ export class EReceta extends LitElement {
       </p>
       <snack-bar ?active="${this._snackbarOpened}">
         Nueva versión disponible 
-        <vaadin-button theme="primary" @click="${() => window.location.reload(true)}">Recargar</vaadin-button>
+        <vaadin-button theme="primary" @click="${() => this.rld()}">Recargar</vaadin-button>
       </snack-bar>
     `;
   }
@@ -161,6 +161,16 @@ export class EReceta extends LitElement {
           <p>Página no encontrada, regresar al <a href="#main">Inicio</a></p>
         `;
     }
+  }
+
+  rld(){
+    navigator.serviceWorker.getRegistration().then(function(reg) {
+      if (reg) {
+        reg.unregister().then(function() { window.location.reload(true); });
+      } else {
+         window.location.reload(true);
+      }
+    });
   }
 
   __onNavClicked(ev) {

@@ -262,7 +262,7 @@ export class PageTwo extends LitElement {
       <style>
         .receta {
           width: 640px;
-          max-width: 95vw;
+          max-width: 85vw;
         }
         .dato {
           width: 120px;
@@ -278,7 +278,7 @@ export class PageTwo extends LitElement {
       <div class="receta">
         <mwc-icon-button icon="close" style="float: right; color: #f52419" @click="${() => {this._dialogQR = false; this._escaneaQR();}}" aria-label="Salir"></mwc-icon-button>
         <vaadin-form-layout class="form" style="margin-top: 48px"> 
-          <h5 colspan="2" style="min-width: 300px">Receta</h5>            
+          <h4 colspan="2" style="min-width: 300px">Receta ${this._receta.vendida? html`<strong>VENDIDA</strong>`:html``}</h4>            
           <vaadin-text-field colspan="2" label="Nombre" readonly id="nombrePte" .value="${this._receta.n}"></vaadin-text-field>
           <vaadin-number-field class="dato" label="Edad" readonly id="edadPte" .value="${this._receta.e}"></vaadin-number-field>
           <vaadin-text-field class="dato" label="RUT" readonly id="rutPte" .value="${this._receta.r}"></vaadin-text-field>
@@ -296,8 +296,10 @@ export class PageTwo extends LitElement {
   }
   _vendeProd(){
     const vendeProd = firebase.functions().httpsCallable('vendeProd');
+    this._spinner = true;
     vendeProd({user: this._user, idReceta: this._receta.i})
     .then(res => {
+      this._spinner = false;
       codeReader.reset();
       this._toggle = !this._toggle;
       alert('Receta vendida');
@@ -305,6 +307,7 @@ export class PageTwo extends LitElement {
     .catch(function(error) {
       codeReader.reset();
       this._toggle = !this._toggle;
+      this._spinner = false;
       alert('Error');
     });
   }
