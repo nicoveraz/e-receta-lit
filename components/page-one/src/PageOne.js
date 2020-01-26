@@ -142,6 +142,9 @@ export class PageOne extends LitElement {
       _user: {
         type: Object
       },
+      _email: {
+        type: String
+      },
       _generaClave: {
         type: Boolean
       },
@@ -201,7 +204,10 @@ export class PageOne extends LitElement {
         <h5 colspan="2">Paso 1: Validar cuenta de correo electrónico ${this._user? okLogo : ''}</h5>
         <p colspan="2">(Puede ser cualquiera, con fines de prueba por ahora sólo Gmail. Único paso necesario por ahora para acceder al lector QR)</p>
         <div>
-          <vaadin-button theme="primary" @click="${() => this._signIn()}" ?disabled=${this._user}>Ingresar con Google</vaadin-button>          
+          <vaadin-button theme="primary" @click="${() => this._signIn()}" ?disabled=${this._user}>Ingresar con Google</vaadin-button>   
+          ${this._email? html`
+              <p style="margin-top: 10px;">Ingresó con el correo ${this._email}</p>
+            `:html``}       
         </div>
       </vaadin-form-layout>
       <vaadin-form-layout class="form">
@@ -262,6 +268,7 @@ export class PageOne extends LitElement {
     firebase.auth().onAuthStateChanged((user) => {
       if (user) {
         this._user = user.uid;
+        this._email = user.email;
         const ref = firebase.firestore().collection('MEDICOS').doc(this._user).collection('DATOS').doc('LOGIN').onSnapshot(async r => {
           const data = await r.data();
           this._rutDoc = data.rut? data.rut : '';

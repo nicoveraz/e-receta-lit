@@ -248,15 +248,16 @@ exports.creaReceta = functions.https.onCall(async (datos, context) => {
 				return await r.data().clavePrivada;
 			});
 
-			const pubK = await functions.config().app.key;
-			const pubKR = await pgp.key.readArmored(pubK);
+			// const pubK = functions.config().app.key;
+			// const apkey = (await pgp.key.readArmored(pubK)).keys;
 
-			// let apkey = await firestoreRef.collection('APP').doc('CRED').get()
-			// .then(async r => {
-			// 	const pubK = await r.data().clavePublica;
-			// 	const pubKR = await pgp.key.readArmored(pubK);
-			// 	return pubKR.keys;
-			// }).catch(e => console.log('ERROR apkey: ', e));
+
+			let apkey = await firestoreRef.collection('APP').doc('CRED').get()
+			.then(async r => {
+				const pubK = await r.data().clavePublica;
+				const pubKR = await pgp.key.readArmored(pubK);
+				return pubKR.keys;
+			}).catch(e => console.log('ERROR apkey: ', e));
 
 			let privKeyObj = (await pgp.key.readArmored(firma)).keys[0];
 			await privKeyObj.decrypt(pass);
@@ -301,17 +302,17 @@ exports.procesaQR = functions.https.onCall(async (datos, context) => {
 		);
 	}
 	const msg = datos.qr.text;
-	const firma = functions.config().priv.key;
-	// let firma = await firestoreRef.collection('APP').doc('CRED').get()
-	// .then(async r => {
-	// 	return await r.data().clavePrivada;
-	// });
-	const pPh = functions.config().pph.key;
+	//const firma = functions.config().priv.key;
+	let firma = await firestoreRef.collection('APP').doc('CRED').get()
+	.then(async r => {
+		return await r.data().clavePrivada;
+	});
+	// const pPh = functions.config().pph.key;
 
-	// let pPh = await firestoreRef.collection('APP').doc('CRED').get()
-	// .then(async r => {
-	// 	return await r.data().passPhrase;
-	// });
+	let pPh = await firestoreRef.collection('APP').doc('CRED').get()
+	.then(async r => {
+		return await r.data().passPhrase;
+	});
 
 	let prKObj = (await pgp.key.readArmored(firma)).keys[0];
 	await prKObj.decrypt(pPh);
