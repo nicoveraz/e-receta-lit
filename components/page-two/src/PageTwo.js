@@ -5,6 +5,8 @@ import { IconButton } from '@material/mwc-icon-button/mwc-icon-button.js';
 import '@vaadin/vaadin-dialog/theme/lumo/vaadin-dialog.js';
 import 'dile-spinner/dile-spinner.js';
 
+import 'jspdf/dist/jspdf.min.js';
+
 import '@vaadin/vaadin-text-field/theme/lumo/vaadin-number-field.js';
 import '@vaadin/vaadin-text-field/theme/lumo/vaadin-text-field.js';
 import '@vaadin/vaadin-text-field/theme/lumo/vaadin-text-area.js';

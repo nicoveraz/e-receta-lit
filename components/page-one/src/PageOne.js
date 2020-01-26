@@ -456,12 +456,17 @@ export class PageOne extends LitElement {
       });
     })
     .catch(function(error) {
-      console.log(error);
+      if(error == 'existing-user'){
+        alert('ERROR: Usuario ya existe');
+      } else {
+        alert('ERROR: datos incorrectos');
+      }
     });
   }
   _fxGeneraFirma(m, s, u, p){
     if(!m || !s || !u || !p){
-      throw new Error('Datos incompletos');
+      alert('Datos incompletos');
+      return;
     }
     const creaFirma = firebase.functions().httpsCallable('creaFirma');
     this._spinner = true;

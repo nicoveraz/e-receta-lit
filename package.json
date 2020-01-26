@@ -24,6 +24,7 @@
     "@vaadin/vaadin-text-field": "^2.5.3",
     "dile-spinner": "^2.0.2",
     "firebase": "^7.7.0",
+    "jspdf": "^1.5.3",
     "lit-element": "^2.0.1",
     "lit-html": "^1.0.0",
     "rollup-plugin-cpy": "^2.0.1",

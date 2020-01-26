@@ -24,6 +24,14 @@ exports.validaMed = functions.https.onCall( async (data, context) => {
 		  'wrong-user'
 		);
 	}
+	const buscaRut = await firestoreRef.collection('CUENTASMED').doc(data.rut).get()
+	.then(r => {
+		if(r.exists){
+			throw new functions.https.HttpsError(
+			  'existing-user'
+			);
+		}
+	});
   	const rut = data.rut.substring(0, data.rut.indexOf('-'));
 	const dataString = functions.config().supersalud.key;
 	const url = `https://api.superdesalud.gob.cl/prestadores/v1/prestadores/${rut}.json/?auth_key=${dataString}`;
@@ -31,6 +39,7 @@ exports.validaMed = functions.https.onCall( async (data, context) => {
 		url: url,
 		json: true
 	};
+
   var res = await rp(options)
 	.then(async resultado =>{
 		await admin.auth().setCustomUserClaims(context.auth.uid, {medicoQx: resultado.prestador.codigoBusqueda == 'Médico Cirujano'});
@@ -43,6 +52,12 @@ exports.validaMed = functions.https.onCall( async (data, context) => {
 		}, {merge: true});
 		let puK = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('PUBKEY').set({
 			rut: data.rut,
+			nombreMed: `${resultado.prestador.nombres} ${resultado.prestador.apellidoPaterno} ${resultado.prestador.apellidoMaterno}`
+		}, {merge: true});
+		let rutMed = await firestoreRef.collection('CUENTASMED').doc(data.rut).set({
+			rut: data.rut,
+			email: context.auth.token.email,
+			nombreEmail: context.auth.token.name,
 			nombreMed: `${resultado.prestador.nombres} ${resultado.prestador.apellidoPaterno} ${resultado.prestador.apellidoMaterno}`
 		}, {merge: true});
     	return resultado;
