@@ -20,7 +20,7 @@ export default [
       ...config[0].plugins,
       cpy([
 			{
-		    files: ['manifest.json', 'images/**'],
+		    files: ['manifest.json', 'images/**', 'worker-one.js'],
 		    dest: 'dist',
 		    options: {
 		      	// parents makes sure to preserve the original folder structure

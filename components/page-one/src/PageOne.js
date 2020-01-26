@@ -12,6 +12,18 @@ import { IconButton } from '@material/mwc-icon-button/mwc-icon-button.js';
 import { okLogo } from './ok-logo.js';
 import { firebase } from './firebase.js';
 
+import * as Comlink from 'comlink/dist/esm/comlink.min.mjs';
+//import 'jspdf/dist/jspdf.min.js';
+
+function callback(value) {
+  alert(`Result: ${value}`);
+}
+async function init() {
+  const remoteFunction = Comlink.wrap(new Worker("worker.js"));
+  await remoteFunction(Comlink.proxy(callback));
+}
+init();
+
 
 export class PageOne extends LitElement {
   static get styles() {
@@ -351,42 +363,42 @@ export class PageOne extends LitElement {
       });
   }
 
-  async _printPNG(r){
-    let pdf = new jsPDF();
-    let imgElem = await this.shadowRoot.querySelector('#qrCode').shadowRoot.querySelector('img');
-    let imgSrc = imgElem.src;
+  // async _printPNG(r){
+  //   let pdf = new jsPDF();
+  //   let imgElem = await this.shadowRoot.querySelector('#qrCode').shadowRoot.querySelector('img');
+  //   let imgSrc = imgElem.src;
 
-    let width = pdf.internal.pageSize.getWidth();
-    let height = pdf.internal.pageSize.getHeight();
-    pdf.addImage(imgSrc, 'PNG', 50, 140, (width - 100), (width - 100));
-    pdf.setFontSize(12);
-    pdf.text('DATOS REFERENCIALES, RECETA EN CÓDIGO QR', 50, 32, 'left');
-    pdf.setFontSize(11);
-    pdf.text(`Nombre: ${r.nombrePte}`, 50, 42, 'left');
-    pdf.text(`RUT: ${r.rutPte}`, 50, 50, 'left');
-    pdf.text(`Rp:`, 50, 58, 'left');
-    pdf.text(`${r.rpPte}`, 50, 66, 'left');
-    pdf.setFontSize(9);
-    pdf.text(`Médico: ${this._nombreMed}`, 50, 116, 'left');
-    pdf.text(`RUT: ${this._rutDoc}`, 50, 124, 'left');
-    pdf.setProperties({
-        title: `Receta ${r.nombrePte}`,
-        creator: 'creado con e-receta.cl'
-    }); 
-    if (navigator.share) {
-      pdf.output('dataurlnewwindow', `Receta ${r.nombrePte}`);
-    } else {
-      let iframe = document.createElement('iframe');
-      iframe.id = "iprint";
-      iframe.src = pdf.output('bloburl');
-      iframe.setAttribute('style', 'display: none;');
-      document.body.appendChild(iframe);
-      iframe.onload = function() {
-          iframe.focus();
-          iframe.contentWindow.print();
-      };
-    }   
-  }
+  //   let width = pdf.internal.pageSize.getWidth();
+  //   let height = pdf.internal.pageSize.getHeight();
+  //   pdf.addImage(imgSrc, 'PNG', 50, 140, (width - 100), (width - 100));
+  //   pdf.setFontSize(12);
+  //   pdf.text('DATOS REFERENCIALES, RECETA EN CÓDIGO QR', 50, 32, 'left');
+  //   pdf.setFontSize(11);
+  //   pdf.text(`Nombre: ${r.nombrePte}`, 50, 42, 'left');
+  //   pdf.text(`RUT: ${r.rutPte}`, 50, 50, 'left');
+  //   pdf.text(`Rp:`, 50, 58, 'left');
+  //   pdf.text(`${r.rpPte}`, 50, 66, 'left');
+  //   pdf.setFontSize(9);
+  //   pdf.text(`Médico: ${this._nombreMed}`, 50, 116, 'left');
+  //   pdf.text(`RUT: ${this._rutDoc}`, 50, 124, 'left');
+  //   pdf.setProperties({
+  //       title: `Receta ${r.nombrePte}`,
+  //       creator: 'creado con e-receta.cl'
+  //   }); 
+  //   if (navigator.share) {
+  //     pdf.output('dataurlnewwindow', `Receta ${r.nombrePte}`);
+  //   } else {
+  //     let iframe = document.createElement('iframe');
+  //     iframe.id = "iprint";
+  //     iframe.src = pdf.output('bloburl');
+  //     iframe.setAttribute('style', 'display: none;');
+  //     document.body.appendChild(iframe);
+  //     iframe.onload = function() {
+  //         iframe.focus();
+  //         iframe.contentWindow.print();
+  //     };
+  //   }   
+  // }
   _validaRut(e){
       this.shadowRoot.querySelector('#rutDoc').checkValidity = () => {     
         if (!/^[0-9]+[-|‐]{1}[0-9kK]{1}$/.test(e)){
