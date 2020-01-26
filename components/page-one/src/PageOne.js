@@ -374,7 +374,8 @@ export class PageOne extends LitElement {
         creator: 'creado con e-receta.cl'
     }); 
     if (navigator.share) {
-      pdf.output('dataurlnewwindow', `Receta ${r.nombrePte}`);
+      //pdf.output('dataurlnewwindow', `Receta ${r.nombrePte}`);
+      window.open(pdf.output('bloburl', `Receta ${r.nombrePte}`), '_blank');
     } else {
       let iframe = document.createElement('iframe');
       iframe.id = "iprint";

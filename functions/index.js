@@ -100,8 +100,6 @@ async function run(datos){
 		return await r.data().txtCaptcha;
 	});
 
-	console.log('captcha: ', txtCaptcha);
-	console.log('Datos: ', datos);
 	
 	await page.click(USERNAME_SELECTOR);
 	await page.type(USERNAME_SELECTOR, datos.rut);
@@ -114,7 +112,6 @@ async function run(datos){
 
 	await page.click(TYPE_SELECTOR);
 	await page.select(TYPE_SELECTOR, 'CEDULA');
-	console.log('Campos llenos');
 
 	let obj = null;
 
@@ -126,12 +123,10 @@ async function run(datos){
 	  return element? element.innerHTML: null;
 	}, RESULT_SELECTOR);
 	txtCaptcha = null;
-	console.log('res:', result);
 	obj = {
 	  status: (result == "Vigente" ? true : false),
 	  message: result
 	};
-	console.log('obj:', obj);
 
 	await browser.close();
 
@@ -145,7 +140,6 @@ exports.validaSerie = functions.runWith(opts).https.onCall( async (datos, contex
 	  );
 	}
 	let data = await run(datos);
-	console.log(data, context.auth.uid);
 	let resFirest = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('LOGIN').set({
 		ciVigente: data.status,
 		txtCaptcha: admin.firestore.FieldValue.delete()
@@ -377,10 +371,8 @@ exports.procesaQR = functions.https.onCall(async (datos, context) => {
 			}, {merge: true});
 			let vendida = await firestoreRef.collection('RECETAS').doc(i).get()
 			.then(r => {
-				console.log('1',r.data().vendida);
 				return r.data().vendida;
 			});
-			console.log('2',vendida);
 			if(vendida){
 				return 'vendida';
 			} else {
@@ -404,7 +396,6 @@ exports.vendeProd = functions.https.onCall(async (data, context) => {
 		);
 	}
 	const id = await data.idReceta;
-	console.log(id);
 	let rp = await firestoreRef.collection('RECETAS').doc(id).set({
 		vendida: true,
 		idReceta: data.idReceta,
