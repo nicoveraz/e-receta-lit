@@ -200,8 +200,8 @@ export class PageOne extends LitElement {
 
   render() {
     return html`
+    <button @click="${() => this.startCalculation()}">TEST</button>
     <div id="eReceta">
-    <button @click="${this.test()}">TEST</button>
       <mwc-icon-button ?disabled=${!this._user} icon="close" style="float: right" @click="${() => this._salir()}" aria-label="Salir"></mwc-icon-button>
       <vaadin-form-layout class="form" style="margin-top: 48px;">  
         <h5 colspan="2">Paso 1: Validar cuenta de correo electrónico ${this._user? okLogo : ''}</h5>
@@ -304,11 +304,11 @@ export class PageOne extends LitElement {
       this._generaClave = true;
     }   
   }
-  async test() {
-    const worker = new Worker("./worker-one.js");
-    const service = Comlink.proxy(worker);
-    const doubled = await service.double(2);
-    console.log(doubled);
+
+  async startCalculation() {
+    const fibonacci = Comlink.wrap(new Worker('./worker-one.js'));
+    const result = await fibonacci(1000);
+    console.log(result);
   }
 
   _borraReceta(){
