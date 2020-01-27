@@ -15,16 +15,6 @@ import { firebase } from './firebase.js';
 import * as Comlink from 'comlink/dist/esm/comlink.min.mjs';
 //import 'jspdf/dist/jspdf.min.js';
 
-function callback(value) {
-  alert(`Result: ${value}`);
-}
-async function init() {
-  const remoteFunction = Comlink.wrap(new Worker("worker.js"));
-  await remoteFunction(Comlink.proxy(callback));
-}
-init();
-
-
 export class PageOne extends LitElement {
   static get styles() {
     return css`
@@ -211,6 +201,7 @@ export class PageOne extends LitElement {
   render() {
     return html`
     <div id="eReceta">
+    <button @click="${this.test()}">TEST</button>
       <mwc-icon-button ?disabled=${!this._user} icon="close" style="float: right" @click="${() => this._salir()}" aria-label="Salir"></mwc-icon-button>
       <vaadin-form-layout class="form" style="margin-top: 48px;">  
         <h5 colspan="2">Paso 1: Validar cuenta de correo electrónico ${this._user? okLogo : ''}</h5>
@@ -313,6 +304,13 @@ export class PageOne extends LitElement {
       this._generaClave = true;
     }   
   }
+  async test() {
+    const worker = new Worker("./worker-one.js");
+    const service = Comlink.proxy(worker);
+    const doubled = await service.double(2);
+    console.log(doubled);
+  }
+
   _borraReceta(){
     this.shadowRoot.querySelector('#nombrePte').value = '';
     this.shadowRoot.querySelector('#rutPte').value = '';
