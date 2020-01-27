@@ -147,7 +147,7 @@ export class PageTwo extends LitElement {
   render() {
     return html`
     <div class="fondo">  
-        <mwc-icon-button-toggle id="toggle" ?on="${this._toggle}" offIcon="close" onIcon="videocam" @click="${() => this._camToggle()}"></mwc-icon-button-toggle>
+        <mwc-icon-button-toggle id="toggle" ?on="${this._toggle}" offIcon="cancel" onIcon="videocam" @click="${() => this._camToggle()}"></mwc-icon-button-toggle>
         <mwc-icon-button-toggle ?on=${this._camaraFrontal} onIcon="camera_rear" offIcon="camera_front" ?disabled="${!this._selectCamara}" @click="${() => this._cambiaCamara()}"></mwc-icon-button-toggle>
         <dile-spinner ?active="${this._spinner}"></dile-spinner>
         <video id="video" class="preview"></video>             
