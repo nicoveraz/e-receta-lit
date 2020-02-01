@@ -13,7 +13,7 @@ import { okLogo } from './ok-logo.js';
 import { firebase } from './firebase.js';
 
 import * as Comlink from 'comlink/dist/esm/comlink.min.mjs';
-//import 'jspdf/dist/jspdf.min.js';
+
 
 export class PageOne extends LitElement {
   static get styles() {
@@ -200,7 +200,7 @@ export class PageOne extends LitElement {
 
   render() {
     return html`
-    <button @click="${() => this.startCalculation()}">TEST</button>
+    <button @click="${() => this.printWorker(this._receta)}">TEST</button>
     <div id="eReceta">
       <mwc-icon-button ?disabled=${!this._user} icon="close" style="float: right" @click="${() => this._salir()}" aria-label="Salir"></mwc-icon-button>
       <vaadin-form-layout class="form" style="margin-top: 48px;">  
@@ -305,10 +305,16 @@ export class PageOne extends LitElement {
     }   
   }
 
-  async startCalculation() {
-    const fibonacci = Comlink.wrap(new Worker('./worker-one.js'));
-    const result = await fibonacci(1000);
-    console.log(result);
+  async printWorker(rp) {
+    const imgElem = await this.shadowRoot.querySelector('#qrCode').shadowRoot.querySelector('img');
+    const image = await fetch(imgElem.src)
+    .then(r => r.blob())
+    .then(b => {
+      return b;
+    });
+    const printer = Comlink.wrap(new Worker('./worker-one.js'));
+    const result = await printer(rp, this._nombreMed, this._rutDoc, image);
+    console.log(result.rp, result.nm, result.rm, result.i);
   }
 
   _borraReceta(){
