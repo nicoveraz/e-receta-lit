@@ -171,6 +171,12 @@ export class PageOne extends LitElement {
       },
       _spinner: {
         type: Boolean
+      },
+      _motivoAnula: {
+        type: String
+      },
+      _idRp: {
+        type: String
       }
     };
   }
@@ -194,6 +200,8 @@ export class PageOne extends LitElement {
     this._fraseClave = '';
     this._receta = {};
     this._qr = '';
+    this._motivoAnula = '';
+    this._idRp = '';
   }
 
   render() {
@@ -233,7 +241,7 @@ export class PageOne extends LitElement {
         <h5 colspan="2" style="color: ${this._generaClave? 'black':'rgba(0,0,0,.3)'}">Paso 3: Llave Pública y Privada ${this._key? okLogo : ''}</h5>
         <p colspan="2" style="color: ${this._user? 'black':'rgba(0,0,0,.3)'}">(Sólo una vez. No guardamos copia de ella, por eso no puede olvidarla)</p>
         <div colspan="2">
-          <vaadin-password-field style="width: 378px" label="Frase Clave (No puede olvidarla. No use la misma de su email)" ?disabled=${!this._generaClave || this._key} .value="${this._passphrase}" @input="${e => this._passphrase = e.target.value}"></vaadin-password-field>      
+          <vaadin-password-field style="width: calc(100% - 138px)" label="Frase Clave (No puede olvidarla. No use la misma de su email)" ?disabled=${!this._generaClave || this._key} .value="${this._passphrase}" @input="${e => this._passphrase = e.target.value}"></vaadin-password-field>      
           <vaadin-button theme="primary" @click="${(e) => this._fxGeneraFirma(this._medValido, this._serieValida, this._user, this._passphrase)}" ?disabled="${!this._passphrase || this._key}">Generar Firma</vaadin-button>
         </div>
       </vaadin-form-layout>
@@ -247,7 +255,7 @@ export class PageOne extends LitElement {
         <vaadin-text-area required error-message="Requerido" colspan="2" class="rp" label="Rp." ?disabled="${(!this._key)}" id="rpPte" @input="${e => this._receta.rpPte = e.target.value}"></vaadin-text-area> 
         <vaadin-password-field required label="Frase Clave" id="fraseClave" ?disabled=${!this._key} @input="${e => this._fraseClave = e.target.value}"></vaadin-password-field>      
         <vaadin-button ?disabled="${(!this._fraseClave || !this._key || !this._receta.nombrePte || !this._receta.rutPte || !this._receta.rpPte)}" theme="primary" @click="${() => {this._creaReceta(this._receta, this._fraseClave);}}">Crear Receta</vaadin-button> 
-        <div style="margin-right: 1px;"></div><vaadin-button ?disabled="${!this._key}" theme="primary error" @click="${() => this._borraReceta()}">Borrar Receta</vaadin-button>          
+        <div style="margin-right: 1px;"></div><vaadin-button ?disabled="${!this._key}" theme="primary error" @click="${() => this._borraReceta()}">Borrar Receta</vaadin-button>
       </vaadin-form-layout>
       <h5 style="color: ${this._qr? 'black':'rgba(0,0,0,.3)'}">Resultado: QR Receta ${this._qr? okLogo : ''}</h5>
       ${navigator.canShare? html`
@@ -258,8 +266,12 @@ export class PageOne extends LitElement {
         `} 
       <br>
       <div class="receta">       
-        <qr-code id="qrCode" format="png" modulesize="3" ?hidden="${!this._qr}" .data="${this._qr}"></qr-code>   
+        <qr-code id="qrCode" format="png" modulesize="3" ?hidden="${!this._qr}" .data="${this._qr}"></qr-code>
       </div>
+      <vaadin-form-layout class="form">   
+        <vaadin-text-field ?disabled="${!this._qr}" label="Motivo Anulación" id="motivoAnula" .value="${this._motivoAnula}" @change="${e => this._motivoAnula = e.target.value}"></vaadin-text-field>
+        <vaadin-button ?disabled="${!this._qr}" theme="primary error" @click="${() => this._anulaReceta()}">Anular Receta</vaadin-button>
+      <vaadin-form-layout>
     <div>
     <dile-spinner-modal ?active="${this._spinner}"></dile-spinner-modal>
     `;
@@ -310,6 +322,7 @@ export class PageOne extends LitElement {
     this.shadowRoot.querySelector('#fraseClave').value = '';
     this._fraseClave = '';
     this._qr = null;
+    this._idRp = '';
   }
   _enviaCaptcha(t){
     const ref = firebase.firestore().collection('MEDICOS').doc(this._user).collection('DATOS').doc('LOGIN');
@@ -487,7 +500,8 @@ export class PageOne extends LitElement {
     this._spinner = true;
     creaReceta(datos)
     .then(async r => {
-      this._qr = r.data;
+      this._qr = r.data.qr;
+      this._idRp = r.data.id;
       if(r.data == 'DATOS INCOMPLETOS'){
         alert('Error: Datos de receta incompletos');
       }
@@ -501,6 +515,24 @@ export class PageOne extends LitElement {
       console.log(e);
       this._spinner = false;
       alert('Error: No se pudo generar receta');
+    });
+  }
+  _anulaProd(){
+    const vendeProd = firebase.functions().httpsCallable('anulaProd');
+    this._spinner = true;
+    anulaProd({user: this._user, idReceta: this._idRp, med: this._user, motivo: this._motivoAnula})
+    .then(res => {
+      this._spinner = false;
+      codeReader.reset();
+      this._toggle = !this._toggle;
+      this._idRp = '';
+      alert('Receta anulada');
+    })
+    .catch(function(error) {
+      codeReader.reset();
+      this._toggle = !this._toggle;
+      this._spinner = false;
+      alert('Error');
     });
   }
   _signIn() {
@@ -529,6 +561,7 @@ export class PageOne extends LitElement {
       this._fraseClave = '';
       this._receta = {};
       this._qr = '';
+      this._idRp = '';
     })
     .catch(e => console.log(e));
     

@@ -291,7 +291,7 @@ exports.creaReceta = functions.https.onCall(async (datos, context) => {
 			return pgp.encrypt(options).then(async ciphertext => {
 			    qrData = await ciphertext.data; 
 			    registraReceta(context.auth.uid, receta.rpPte, receta.rutPte, idReceta);
-			    return qrData;
+			    return {qr: qrData, id: idReceta};
 			});
 		} else {
 			return 'CREDENCIALES INCOMPLETAS';
@@ -395,6 +395,16 @@ exports.vendeProd = functions.https.onCall(async (data, context) => {
 		  'wrong-user'
 		);
 	}
+	if(!userRecord.customClaims.medicoQx){
+		throw new functions.https.HttpsError(
+		  'wrong-credentials'
+		);
+	}
+	if(!userRecord.customClaims.farmacia){
+		throw new functions.https.HttpsError(
+		  'wrong-credentials'
+		);
+	}
 	const id = await data.idReceta;
 	let rp = await firestoreRef.collection('RECETAS').doc(id).set({
 		vendida: true,
@@ -402,6 +412,44 @@ exports.vendeProd = functions.https.onCall(async (data, context) => {
 		vendidoPor: context.auth.uid,
 		nombreVendedor: context.auth.token.name || null,
 		emailVendedor: context.auth.token.email || null,
+		fecha: new Date()
+	}, {merge: true});
+});
+
+exports.anulaProd = functions.https.onCall(async (data, context) => {
+	if (!(context.auth && context.auth.token)) {
+	  throw new functions.https.HttpsError(
+	    'permission-denied'
+	  );
+	}
+	if(data.user != context.auth.uid){
+		throw new functions.https.HttpsError(
+		  'wrong-user'
+		);
+	}
+	if(!userRecord.customClaims.medicoQx){
+		throw new functions.https.HttpsError(
+		  'wrong-credentials'
+		);
+	}
+	if (context.auth.uid != data.u) {
+	  throw new functions.https.HttpsError(
+	    'Sólo médico que emite receta puede anularla'
+	  );
+	}
+	if(!userRecord.customClaims.farmacia){
+		throw new functions.https.HttpsError(
+		  'wrong-credentials'
+		);
+	}
+	const id = await data.idReceta;
+	let rp = await firestoreRef.collection('RECETAS').doc(id).set({
+		anulada: true,
+		idReceta: data.idReceta,
+		anuladaPor: context.auth.uid,
+		nombreAnula: context.auth.token.name || null,
+		emailAnula: context.auth.token.email || null,
+		motivo: data.motivo,
 		fecha: new Date()
 	}, {merge: true});
 });

@@ -128,6 +128,15 @@ export class PageTwo extends LitElement {
       },
       _spinner: {
         type: Boolean
+      },
+      _medico: {
+        type: Boolean
+      },
+      _farmacia: {
+        type: Boolean
+      },
+      _motivoAnula: {
+        type: String
       }
     };
   }
@@ -140,6 +149,9 @@ export class PageTwo extends LitElement {
     this._toggle = false;
     this._receta = '';
     this._spinner = true;
+    this._medico = false;
+    this._farmacia = false;
+    this._motivoAnula = '';
     this._boundDialogRenderer = this.dialogRenderer.bind(this);
   }
 
@@ -166,6 +178,14 @@ export class PageTwo extends LitElement {
     firebase.auth().onAuthStateChanged((user) => {
       if (user) {
         this._user = user.uid;
+        firebase.auth().currentUser.getIdTokenResult()
+          .then((idTokenResult) => {
+             if (!!idTokenResult.claims.medicoQx) {
+              this._medico = true;
+             } else if (!!idTokenResult.claims.farmacia) {
+              this._farmacia = true;
+             }
+          }).catch(e => console.log(e));
         codeReader.listVideoInputDevices()
           .then(videoInputDevices => {
             this._selectedDeviceId = videoInputDevices[0].deviceId;
@@ -277,21 +297,33 @@ export class PageTwo extends LitElement {
           margin: 24px 0;
         }
       </style>
-      <div class="receta">
-        <mwc-icon-button icon="close" style="float: right; color: #f52419" @click="${() => {this._dialogQR = false; this._escaneaQR();}}" aria-label="Salir"></mwc-icon-button>
-        <vaadin-form-layout class="form" style="margin-top: 48px"> 
-          <h4 colspan="2" style="min-width: 300px">Receta ${this._receta.vendida? html`<strong>VENDIDA</strong>`:html``}</h4>            
-          <vaadin-text-field colspan="2" label="Nombre" readonly id="nombrePte" .value="${this._receta.n}"></vaadin-text-field>
-          <vaadin-number-field class="dato" label="Edad" readonly id="edadPte" .value="${this._receta.e}"></vaadin-number-field>
-          <vaadin-text-field class="dato" label="RUT" readonly id="rutPte" .value="${this._receta.r}"></vaadin-text-field>
-          <vaadin-text-field colspan="2" label="Dirección" readonly id="direccionPte" .value="${this._receta.d}"></vaadin-text-field>
-          <div class="flotaIzq" style="margin-right: 8px;"></div><vaadin-text-field class="dato" label="Fecha" readonly .value="${this._receta.f}"></vaadin-text-field>
-          <vaadin-text-area class="rp" colspan="2" label="Rp." readonly id="rpPte" .value="${this._receta.rp}"></vaadin-text-area>
-          <vaadin-text-field label="Médico" readonly id="nombreMed" .value="${this._nombreMed}"></vaadin-text-field>
-          <vaadin-text-field label="RUT Médico" readonly id="rutMed" .value="${this._rutMed}"></vaadin-text-field>
-          <vaadin-button class="der" theme="primary" @click="${()=> this._vendeProd()}">Marcar como vendida</vaadin-button>
-        </form>
-      </div>
+      ${(this._medico || this._farmacia)? html`
+        <div class="receta">
+          <mwc-icon-button icon="close" style="float: right; color: #f52419" @click="${() => {this._dialogQR = false; this._escaneaQR();}}" aria-label="Salir"></mwc-icon-button>
+          <vaadin-form-layout class="form" style="margin-top: 48px"> 
+            <h4 colspan="2" style="min-width: 300px">Receta ${this._receta.vendida? html`<strong>VENDIDA</strong>`:html``}${this._receta.anulada? html`<strong>ANULADA</strong>`:html``}</h4>            
+            <vaadin-text-field colspan="2" label="Nombre" readonly id="nombrePte" .value="${this._receta.n}"></vaadin-text-field>
+            <vaadin-number-field class="dato" label="Edad" readonly id="edadPte" .value="${this._receta.e}"></vaadin-number-field>
+            <vaadin-text-field class="dato" label="RUT" readonly id="rutPte" .value="${this._receta.r}"></vaadin-text-field>
+            <vaadin-text-field colspan="2" label="Dirección" readonly id="direccionPte" .value="${this._receta.d}"></vaadin-text-field>
+            <div class="flotaIzq" style="margin-right: 8px;"></div><vaadin-text-field class="dato" label="Fecha" readonly .value="${this._receta.f}"></vaadin-text-field>
+            <vaadin-text-area class="rp" colspan="2" label="Rp." readonly id="rpPte" .value="${this._receta.rp}"></vaadin-text-area>
+            <vaadin-text-field label="Médico" readonly id="nombreMed" .value="${this._nombreMed}"></vaadin-text-field>
+            <vaadin-text-field label="RUT Médico" readonly id="rutMed" .value="${this._rutMed}"></vaadin-text-field>
+            <vaadin-button class="der" theme="primary" @click="${()=> this._vendeProd()}">Marcar como vendida</vaadin-button>
+            ${(this._medico && (this._user == this._receta.u))? html`
+              <p colspan="2">Anular Receta</p>
+              <vaadin-text-field colspan="2" label="Motivo Anulación" readonly id="motivoAnula" .value="${this._motivoAnula}" @change="${e => this._motivoAnula = e.target.value}"></vaadin-text-field>
+              <vaadin-button ?disabled="${!this._key}" theme="primary error" @click="${() => this._anulaReceta()}">Anular Receta</vaadin-button>
+              `:html``}
+            ${this._farmacia? html`
+              <p colspan="2">Anular Receta</p>
+              <vaadin-text-field colspan="2" label="Motivo Anulación" id="motivoAnula" .value="${this._motivoAnula}" @change="${e => this._motivoAnula = e.target.value}"></vaadin-text-field>
+              <vaadin-button ?disabled="${!this._key}" theme="primary error" @click="${() => this._anulaReceta()}">Anular Receta</vaadin-button>
+              `:html``}
+          </form>
+        </div>
+        `: html``}    
     `;
     const rend = () => render(template(), root);
     rend();
@@ -305,6 +337,23 @@ export class PageTwo extends LitElement {
       codeReader.reset();
       this._toggle = !this._toggle;
       alert('Receta vendida');
+    })
+    .catch(function(error) {
+      codeReader.reset();
+      this._toggle = !this._toggle;
+      this._spinner = false;
+      alert('Error');
+    });
+  }
+  _anulaProd(){
+    const vendeProd = firebase.functions().httpsCallable('anulaProd');
+    this._spinner = true;
+    anulaProd({user: this._user, idReceta: this._receta.i, med: this._receta.u, motivo: this._motivoAnula})
+    .then(res => {
+      this._spinner = false;
+      codeReader.reset();
+      this._toggle = !this._toggle;
+      alert('Receta anulada');
     })
     .catch(function(error) {
       codeReader.reset();
