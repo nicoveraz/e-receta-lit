@@ -167,7 +167,6 @@ exports.creaFirma = functions.https.onCall(async (datos, context) => {
 		);
 	}
 	return await admin.auth().getUser(context.auth.uid).then(async (userRecord) => {
-		console.log(userRecord.customClaims);
 		if(!!userRecord.customClaims.medicoQx && !!userRecord.customClaims.ciVigente){
 			const optionsKey = {
 	            userIds: [{ id: context.auth.uid }],
@@ -310,78 +309,90 @@ exports.procesaQR = functions.https.onCall(async (datos, context) => {
 		  'wrong-user'
 		);
 	}
-	const msg = datos.qr.text;
-	//const firma = functions.config().priv.key;
-	let firma = await firestoreRef.collection('APP').doc('CRED').get()
-	.then(async r => {
-		return await r.data().clavePrivada;
-	});
-	// const pPh = functions.config().pph.key;
-
-	let pPh = await firestoreRef.collection('APP').doc('CRED').get()
-	.then(async r => {
-		return await r.data().passPhrase;
-	});
-
-	let prKObj = (await pgp.key.readArmored(firma)).keys[0];
-	await prKObj.decrypt(pPh);
-
-	const options = { 
-		message: (await pgp.message.readArmored(msg)), 
-		privateKeys: [prKObj]
-	};
-
-	let id, mjeFirmado, pubKR, pubKM, valid;
-
-	await pgp.decrypt(options)
-	.then( async plaintext => {
-	    let data = await plaintext.data;
-	    id = await data.split('-----', 1).toString().replace(/\n/g, '');
-	    mjeFirmado = await data.substring(data.indexOf('-----')).toString();
-	}).catch(e => console.log(e));
-
-	pubKM = await firestoreRef.collection('MEDICOS').doc(id).collection('DATOS').doc('CREDENCIALES').get()
-	.then(async r => {
-		if(r.exists){
-			return await r.data().clavePublica;
-		} else {
-			throw 'ERROR: no hay datos';
+	return await admin.auth().getUser(context.auth.uid).then(async (userRecord) => {
+		if(!userRecord.customClaims.medicoQx){
+			throw new functions.https.HttpsError(
+			  'wrong-credentials'
+			);
 		}
-	}).catch(e => console.log('ERROR pubK: ', e));
+		if(!userRecord.customClaims.farmacia){
+			throw new functions.https.HttpsError(
+			  'wrong-credentials'
+			);
+		}
+		const msg = datos.qr.text;
+		//const firma = functions.config().priv.key;
+		let firma = await firestoreRef.collection('APP').doc('CRED').get()
+		.then(async r => {
+			return await r.data().clavePrivada;
+		});
+		// const pPh = functions.config().pph.key;
 
-	const optionsVerificaFirma = {
-	    message: (await pgp.cleartext.readArmored(mjeFirmado)),
-	    publicKeys: (await pgp.key.readArmored(pubKM)).keys
-	};
+		let pPh = await firestoreRef.collection('APP').doc('CRED').get()
+		.then(async r => {
+			return await r.data().passPhrase;
+		});
 
-	return pgp.verify(optionsVerificaFirma)
-	.then(async (verified) => {
-		valid = verified.signatures[0].valid; // true
-		const data = await JSON.parse(verified.data);
-		const i = data.i;
-		if (valid) {
-			let rp = await firestoreRef.collection('RECETAS').doc(i).set({
-				scan: admin.firestore.FieldValue.arrayUnion({
-					escaneadaPor: context.auth.uid,
-					nombre: context.auth.token.name || null,
-					email: context.auth.token.email || null,
-					fecha: new Date(),
-					idReceta: i
-				})
-			}, {merge: true});
-			let vendida = await firestoreRef.collection('RECETAS').doc(i).get()
-			.then(r => {
-				return r.data().vendida;
-			});
-			if(vendida){
-				return 'vendida';
+		let prKObj = (await pgp.key.readArmored(firma)).keys[0];
+		await prKObj.decrypt(pPh);
+
+		const options = { 
+			message: (await pgp.message.readArmored(msg)), 
+			privateKeys: [prKObj]
+		};
+
+		let id, mjeFirmado, pubKR, pubKM, valid;
+
+		await pgp.decrypt(options)
+		.then( async plaintext => {
+		    let data = await plaintext.data;
+		    id = await data.split('-----', 1).toString().replace(/\n/g, '');
+		    mjeFirmado = await data.substring(data.indexOf('-----')).toString();
+		}).catch(e => console.log(e));
+
+		pubKM = await firestoreRef.collection('MEDICOS').doc(id).collection('DATOS').doc('CREDENCIALES').get()
+		.then(async r => {
+			if(r.exists){
+				return await r.data().clavePublica;
 			} else {
-				return verified.data;
+				throw 'ERROR: no hay datos';
 			}
-		} else {
-			return 'no verificado';
-		}
-	}).catch(e => console.log(e));	
+		}).catch(e => console.log('ERROR pubK: ', e));
+
+		const optionsVerificaFirma = {
+		    message: (await pgp.cleartext.readArmored(mjeFirmado)),
+		    publicKeys: (await pgp.key.readArmored(pubKM)).keys
+		};
+
+		return pgp.verify(optionsVerificaFirma)
+		.then(async (verified) => {
+			valid = verified.signatures[0].valid; // true
+			const data = await JSON.parse(verified.data);
+			const i = data.i;
+			if (valid) {
+				let rp = await firestoreRef.collection('RECETAS').doc(i).set({
+					scan: admin.firestore.FieldValue.arrayUnion({
+						escaneadaPor: context.auth.uid,
+						nombre: context.auth.token.name || null,
+						email: context.auth.token.email || null,
+						fecha: new Date(),
+						idReceta: i
+					})
+				}, {merge: true});
+				let vendida = await firestoreRef.collection('RECETAS').doc(i).get()
+				.then(r => {
+					return r.data().vendida;
+				});
+				if(vendida){
+					return 'vendida';
+				} else {
+					return verified.data;
+				}
+			} else {
+				return 'no verificado';
+			}
+		}).catch(e => console.log(e));
+	});	
 });
 
 exports.vendeProd = functions.https.onCall(async (data, context) => {
@@ -395,25 +406,27 @@ exports.vendeProd = functions.https.onCall(async (data, context) => {
 		  'wrong-user'
 		);
 	}
-	if(!userRecord.customClaims.medicoQx){
-		throw new functions.https.HttpsError(
-		  'wrong-credentials'
-		);
-	}
-	if(!userRecord.customClaims.farmacia){
-		throw new functions.https.HttpsError(
-		  'wrong-credentials'
-		);
-	}
-	const id = await data.idReceta;
-	let rp = await firestoreRef.collection('RECETAS').doc(id).set({
-		vendida: true,
-		idReceta: data.idReceta,
-		vendidoPor: context.auth.uid,
-		nombreVendedor: context.auth.token.name || null,
-		emailVendedor: context.auth.token.email || null,
-		fecha: new Date()
-	}, {merge: true});
+	return await admin.auth().getUser(context.auth.uid).then(async (userRecord) => {
+		if(!userRecord.customClaims.medicoQx){
+			throw new functions.https.HttpsError(
+			  'wrong-credentials'
+			);
+		}
+		if(!userRecord.customClaims.farmacia){
+			throw new functions.https.HttpsError(
+			  'wrong-credentials'
+			);
+		}
+		const id = await data.idReceta;
+		let rp = await firestoreRef.collection('RECETAS').doc(id).set({
+			vendida: true,
+			idReceta: data.idReceta,
+			vendidoPor: context.auth.uid,
+			nombreVendedor: context.auth.token.name || null,
+			emailVendedor: context.auth.token.email || null,
+			fecha: new Date()
+		}, {merge: true});
+	});	
 });
 
 exports.anulaProd = functions.https.onCall(async (data, context) => {
@@ -427,29 +440,31 @@ exports.anulaProd = functions.https.onCall(async (data, context) => {
 		  'wrong-user'
 		);
 	}
-	if(!userRecord.customClaims.medicoQx){
-		throw new functions.https.HttpsError(
-		  'wrong-credentials'
-		);
-	}
 	if (context.auth.uid != data.u) {
 	  throw new functions.https.HttpsError(
 	    'Sólo médico que emite receta puede anularla'
 	  );
 	}
-	if(!userRecord.customClaims.farmacia){
-		throw new functions.https.HttpsError(
-		  'wrong-credentials'
-		);
-	}
-	const id = await data.idReceta;
-	let rp = await firestoreRef.collection('RECETAS').doc(id).set({
-		anulada: true,
-		idReceta: data.idReceta,
-		anuladaPor: context.auth.uid,
-		nombreAnula: context.auth.token.name || null,
-		emailAnula: context.auth.token.email || null,
-		motivo: data.motivo,
-		fecha: new Date()
-	}, {merge: true});
+	return await admin.auth().getUser(context.auth.uid).then(async (userRecord) => {
+		if(!userRecord.customClaims.medicoQx){
+			throw new functions.https.HttpsError(
+			  'wrong-credentials'
+			);
+		}
+		if(!userRecord.customClaims.farmacia){
+			throw new functions.https.HttpsError(
+			  'wrong-credentials'
+			);
+		}
+		const id = await data.idReceta;
+		let rp = await firestoreRef.collection('RECETAS').doc(id).set({
+			anulada: true,
+			idReceta: data.idReceta,
+			anuladaPor: context.auth.uid,
+			nombreAnula: context.auth.token.name || null,
+			emailAnula: context.auth.token.email || null,
+			motivo: data.motivo,
+			fecha: new Date()
+		}, {merge: true});
+	});
 });

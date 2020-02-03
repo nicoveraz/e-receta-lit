@@ -159,8 +159,10 @@ export class PageTwo extends LitElement {
   render() {
     return html`
     <div class="fondo">  
-        <mwc-icon-button-toggle id="toggle" ?on="${this._toggle}" offIcon="cancel" onIcon="videocam" @click="${() => this._camToggle()}"></mwc-icon-button-toggle>
-        <mwc-icon-button-toggle ?on=${this._camaraFrontal} onIcon="camera_rear" offIcon="camera_front" ?disabled="${!this._selectCamara}" @click="${() => this._cambiaCamara()}"></mwc-icon-button-toggle>
+        <mwc-icon-button-toggle id="toggle" ?on="${this._toggle}" offIcon="cancel" onIcon="videocam" ?disabled="${!this._user}" @click="${() => this._camToggle()}"></mwc-icon-button-toggle>
+        ${this._selectCamara? html`
+          <mwc-icon-button-toggle ?on=${this._camaraFrontal} onIcon="camera_rear" offIcon="camera_front" ?disabled="${!this._selectCamara}" @click="${() => this._cambiaCamara()}"></mwc-icon-button-toggle>
+          `:html``}
         <dile-spinner ?active="${this._spinner}"></dile-spinner>
         <video id="video" class="preview"></video>             
         ${this._user? html`         
@@ -313,7 +315,7 @@ export class PageTwo extends LitElement {
             <vaadin-button class="der" theme="primary" @click="${()=> this._vendeProd()}">Marcar como vendida</vaadin-button>
             ${(this._medico && (this._user == this._receta.u))? html`
               <p colspan="2">Anular Receta</p>
-              <vaadin-text-field colspan="2" label="Motivo Anulación" readonly id="motivoAnula" .value="${this._motivoAnula}" @change="${e => this._motivoAnula = e.target.value}"></vaadin-text-field>
+              <vaadin-text-field colspan="2" label="Motivo Anulación" id="motivoAnula" .value="${this._motivoAnula}" @change="${e => this._motivoAnula = e.target.value}"></vaadin-text-field>
               <vaadin-button ?disabled="${!this._key}" theme="primary error" @click="${() => this._anulaReceta()}">Anular Receta</vaadin-button>
               `:html``}
             ${this._farmacia? html`
