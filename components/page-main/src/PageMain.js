@@ -103,14 +103,15 @@ export class PageMain extends LitElement {
         <h1 class="titulo">Bienvenido a</h1>
         <h1 class="titulo">e-receta</h1>
       </div>
-      <p class="version">Versión 0.1.6b</p>
+      <p class="version">Versión 0.1.8b</p>
       <h3>Experimento de NewtriLabs</h3>
-      <p class="texto">Receta encriptada y firmada con esquema llave pública/privada de 256bits, en código QR que puede ser compartido a dispositivos móviles, enviado vía email o impreso</p>
+      <h4>QR que incorpora receta encriptada y firma del médico con esquema llave pública/privada de 256bits</h4>
+      <p class="texto">Proyecto creado con el fin de lograr transición desde receta tradicional en papel a receta electrónica en forma natural ya que receta QR puede ser impresa o compartida por medios digitales</p>
       <p class="texto">Lector restringido a acceso con email, para médicos enrolados en el sistema y usuarios autorizados, por ejemplo, de farmacias. Graba en base de datos si receta fue despachada, evitando doble venta de producto, lo que permitiría recetas digitales "retenidas"</p>
-      <p class="texto"><span>Importante:</span> A pesar de ser seguro y basarse en últimas tecnologías de encriptación, este proyecto aún no cumple con legislación chilena, pues no cuenta con Firma Digital Avanzada para cada médico <i>(Requerimiento, en nuestra opinión, completamente innecesario)</i></p>
+      <p class="texto"><span>Importante:</span> A pesar de ser seguro y basarse en últimas tecnologías de encriptación, este proyecto aún no cumple con legislación chilena para recetas electrónicas, pues no cuenta con Firma Digital Avanzada para cada médico <i>(Requerimiento, en nuestra opinión, completamente innecesario)</i></p>
       <p class="texto">Fácilmente se puede incorporar firma electrónica a nuestro sistema en el futuro</p>
       <p class="texto">e-receta.cl es un proyecto en desarrollo, es libre de probarlo en forma gratuita, pero <span>no debe ser utilizado para recetas reales</span></p>
-      <p>Si está interesado en este proyecto y necesita más información envíenos un <a href="mailto:contacto@newtri.cl?Subject=eReceta" rel="noopener noreferrer">email<a></p>
+      <p>Si está interesado en este proyecto y necesita más información envíenos un email a <a href="mailto:contacto@newtri.cl?Subject=eReceta" rel="noopener noreferrer">contacto@newtri.cl<a></p>
       <p>Más detalles en nuestro <a href="https://blog.newtri.cl/2020/01/26/e-receta.html" target="_blank" rel="noopener noreferrer">blog</a></p>
     </div>
     `;
