@@ -81,7 +81,7 @@ export class PageTwo extends LitElement {
         z-index: 1000;
       }
       dile-spinner {
-        z-index: 100;
+        z-index: 10000;
         position: fixed;
         display: flex;
         justify-content: center;
@@ -137,6 +137,9 @@ export class PageTwo extends LitElement {
       },
       _motivoAnula: {
         type: String
+      },
+      anulada: {
+        type: Boolean
       }
     };
   }
@@ -149,6 +152,7 @@ export class PageTwo extends LitElement {
     this._toggle = false;
     this._receta = '';
     this._spinner = true;
+    this._anulada = false;
     this._medico = false;
     this._farmacia = false;
     this._motivoAnula = '';
@@ -312,7 +316,7 @@ export class PageTwo extends LitElement {
             <vaadin-text-area class="rp" colspan="2" label="Rp." readonly id="rpPte" .value="${this._receta.rp}"></vaadin-text-area>
             <vaadin-text-field label="Médico" readonly id="nombreMed" .value="${this._nombreMed}"></vaadin-text-field>
             <vaadin-text-field label="RUT Médico" readonly id="rutMed" .value="${this._rutMed}"></vaadin-text-field>
-            <vaadin-button class="der" theme="primary" @click="${()=> this._vendeProd()}">Marcar como vendida</vaadin-button>
+            <vaadin-button class="der" theme="primary" @click="${()=> this._vendeProd()}" ?disabled="${this._anulada}">Marcar como vendida</vaadin-button>
             ${(this._medico && (this._user == this._receta.u))? html`
               <p colspan="2">Anular Receta</p>
               <vaadin-text-field colspan="2" label="Motivo Anulación" id="motivoAnula" .value="${this._motivoAnula}" @change="${e => this._motivoAnula = e.target.value}"></vaadin-text-field>
@@ -321,7 +325,7 @@ export class PageTwo extends LitElement {
             ${this._farmacia? html`
               <p colspan="2">Anular Receta</p>
               <vaadin-text-field colspan="2" label="Motivo Anulación" id="motivoAnula" .value="${this._motivoAnula}" @change="${e => this._motivoAnula = e.target.value}"></vaadin-text-field>
-              <vaadin-button ?disabled="${!this._key}" theme="primary error" @click="${() => this._anulaReceta()}">Anular Receta</vaadin-button>
+              <vaadin-button ?disabled="${!this._key}" ?disabled="${this._anulada}" theme="primary error" @click="${() => this._anulaReceta()}">Anular Receta</vaadin-button>
               `:html``}
           </form>
         </div>
@@ -333,6 +337,7 @@ export class PageTwo extends LitElement {
   _vendeProd(){
     const vendeProd = firebase.functions().httpsCallable('vendeProd');
     this._spinner = true;
+    this._anulada = true;
     vendeProd({user: this._user, idReceta: this._receta.i})
     .then(res => {
       this._spinner = false;
@@ -344,12 +349,14 @@ export class PageTwo extends LitElement {
       codeReader.reset();
       this._toggle = !this._toggle;
       this._spinner = false;
+      this._anulada = false;
       alert('Error');
     });
   }
   _anulaProd(){
     const vendeProd = firebase.functions().httpsCallable('anulaProd');
     this._spinner = true;
+    this._anulada = true;
     anulaProd({user: this._user, idReceta: this._receta.i, med: this._receta.u, motivo: this._motivoAnula})
     .then(res => {
       this._spinner = false;
@@ -360,6 +367,7 @@ export class PageTwo extends LitElement {
     .catch(function(error) {
       codeReader.reset();
       this._toggle = !this._toggle;
+      this._anulada = false;
       this._spinner = false;
       alert('Error');
     });

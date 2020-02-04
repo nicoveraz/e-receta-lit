@@ -103,7 +103,7 @@ export class PageMain extends LitElement {
         <h1 class="titulo">Bienvenido a</h1>
         <h1 class="titulo">e-receta</h1>
       </div>
-      <p class="version">Versión 0.1.5b</p>
+      <p class="version">Versión 0.1.6b</p>
       <h3>Experimento de NewtriLabs</h3>
       <p class="texto">Receta encriptada y firmada con esquema llave pública/privada de 256bits, en código QR que puede ser compartido a dispositivos móviles, enviado vía email o impreso</p>
       <p class="texto">Lector restringido a acceso con email, para médicos enrolados en el sistema y usuarios autorizados, por ejemplo, de farmacias. Graba en base de datos si receta fue despachada, evitando doble venta de producto, lo que permitiría recetas digitales "retenidas"</p>
