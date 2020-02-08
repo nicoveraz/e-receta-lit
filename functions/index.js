@@ -416,7 +416,7 @@ exports.vendeProd = functions.https.onCall(async (data, context) => {
 					  'Receta ya vendida'
 					);
 				} else {
-					.set({
+					rp.set({
 						vendida: true,
 						idReceta: data.idReceta,
 						vendidoPor: context.auth.uid,
