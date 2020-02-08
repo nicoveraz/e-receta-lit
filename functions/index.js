@@ -405,14 +405,27 @@ exports.vendeProd = functions.https.onCall(async (data, context) => {
 	return await admin.auth().getUser(context.auth.uid).then(async (userRecord) => {
 		if(!!userRecord.customClaims.medicoQx || !!userRecord.customClaims.farmacia){
 			const id = await data.idReceta;
-			let rp = await firestoreRef.collection('RECETAS').doc(id).set({
-				vendida: true,
-				idReceta: data.idReceta,
-				vendidoPor: context.auth.uid,
-				nombreVendedor: context.auth.token.name || null,
-				emailVendedor: context.auth.token.email || null,
-				fecha: new Date()
-			}, {merge: true});
+			let rp = await firestoreRef.collection('RECETAS').doc(id);
+			rp.get().then(d => {
+				if(!!d.data().anulada){
+					throw new functions.https.HttpsError(
+					  'Receta anulada, no puede ser vendida'
+					);
+				} else if(!!d.data().vendida) {
+					throw new functions.https.HttpsError(
+					  'Receta ya vendida'
+					);
+				} else {
+					.set({
+						vendida: true,
+						idReceta: data.idReceta,
+						vendidoPor: context.auth.uid,
+						nombreVendedor: context.auth.token.name || null,
+						emailVendedor: context.auth.token.email || null,
+						fecha: new Date()
+					}, {merge: true});
+				}
+			});			
 		} else {
 			throw new functions.https.HttpsError(
 			  'wrong-credentials'
@@ -440,15 +453,28 @@ exports.anulaProd = functions.https.onCall(async (data, context) => {
 	return await admin.auth().getUser(context.auth.uid).then(async (userRecord) => {
 		if(!!userRecord.customClaims.medicoQx || !!userRecord.customClaims.farmacia){
 			const id = await data.idReceta;
-			let rp = await firestoreRef.collection('RECETAS').doc(id).set({
-				anulada: true,
-				idReceta: data.idReceta,
-				anuladaPor: context.auth.uid,
-				nombreAnula: context.auth.token.name || null,
-				emailAnula: context.auth.token.email || null,
-				motivo: data.motivo,
-				fecha: new Date()
-			}, {merge: true});
+			let rp = await firestoreRef.collection('RECETAS').doc(id);
+			rp.get().then(d => {
+				if(!!d.data().vendida){
+					throw new functions.https.HttpsError(
+					  'Receta ya vendida, no se puede anular'
+					);
+				} else if(!!d.data().anulada){
+					throw new functions.https.HttpsError(
+					  'Receta ya anulada'
+					);
+				} else {
+					rp.set({
+						anulada: true,
+						idReceta: data.idReceta,
+						anuladaPor: context.auth.uid,
+						nombreAnula: context.auth.token.name || null,
+						emailAnula: context.auth.token.email || null,
+						motivo: data.motivo,
+						fecha: new Date()
+					}, {merge: true});
+				}
+			});			
 		} else {
 			throw new functions.https.HttpsError(
 			  'wrong-credentials'

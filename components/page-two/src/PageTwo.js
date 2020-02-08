@@ -325,7 +325,7 @@ export class PageTwo extends LitElement {
             ${this._farmacia? html`
               <p colspan="2">Anular Receta</p>
               <vaadin-text-field colspan="2" label="Motivo Anulación" id="motivoAnula" .value="${this._motivoAnula}" @change="${e => this._motivoAnula = e.target.value}"></vaadin-text-field>
-              <vaadin-button ?disabled="${!this._key}" ?disabled="${this._anulada}" theme="primary error" @click="${() => this._anulaReceta()}">Anular Receta</vaadin-button>
+              <vaadin-button ?disabled="${!this._key}" ?disabled="${!this.motivoAnula}" theme="primary error" @click="${() => this._anulaReceta()}">Anular Receta</vaadin-button>
               `:html``}
           </form>
         </div>
@@ -353,7 +353,7 @@ export class PageTwo extends LitElement {
       alert('Error');
     });
   }
-  _anulaProd(){
+  _anulaReceta(){
     const vendeProd = firebase.functions().httpsCallable('anulaProd');
     this._spinner = true;
     this._anulada = true;

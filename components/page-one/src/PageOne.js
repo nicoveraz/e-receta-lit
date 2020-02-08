@@ -270,7 +270,7 @@ export class PageOne extends LitElement {
       </div>
       <vaadin-form-layout class="form">   
         <vaadin-text-field ?disabled="${!this._qr}" label="Motivo Anulación" id="motivoAnula" .value="${this._motivoAnula}" @change="${e => this._motivoAnula = e.target.value}"></vaadin-text-field>
-        <vaadin-button ?disabled="${!this._qr}" theme="primary error" @click="${() => this._anulaReceta()}">Anular Receta</vaadin-button>
+        <vaadin-button ?disabled="${!this._motivoAnula}" theme="primary error" @click="${() => this._anulaReceta()}">Anular Receta</vaadin-button>
       <vaadin-form-layout>
     <div>
     <dile-spinner-modal ?active="${this._spinner}"></dile-spinner-modal>
@@ -283,12 +283,12 @@ export class PageOne extends LitElement {
         this._email = user.email;
         const ref = firebase.firestore().collection('MEDICOS').doc(this._user).collection('DATOS').doc('LOGIN').onSnapshot(async r => {
           const data = await r.data();
-          this._rutDoc = data.rut? data.rut : '';
-          this._medValido = data.medico? data.medico : '';
-          this._serieValida = data.ciVigente? data.ciVigente : '';
-          this._numSerie = data.serie? data.serie : '';
-          this._captcha = data.captcha? data.captcha : ''; 
-          this._nombreMed = data.nombreMed? data.nombreMed : '';         
+          this._rutDoc = await data.rut? data.rut : '';
+          this._medValido = await data.medico? data.medico : '';
+          this._serieValida = await data.ciVigente? data.ciVigente : '';
+          this._numSerie = await data.serie? data.serie : '';
+          this._captcha = await data.captcha? data.captcha : ''; 
+          this._nombreMed = await data.nombreMed? data.nombreMed : '';         
         });
         const refKey = firebase.firestore().collection('MEDICOS').doc(this._user).collection('DATOS').doc('PUBKEY').onSnapshot(async r => {
           if(r.exists){
@@ -517,7 +517,7 @@ export class PageOne extends LitElement {
       alert('Error: No se pudo generar receta');
     });
   }
-  _anulaProd(){
+  _anulaReceta(){
     const vendeProd = firebase.functions().httpsCallable('anulaProd');
     this._spinner = true;
     anulaProd({user: this._user, idReceta: this._idRp, med: this._user, motivo: this._motivoAnula})
