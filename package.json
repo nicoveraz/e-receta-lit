@@ -12,7 +12,7 @@
   },
   "name": "e-receta",
   "version": "0.0.0",
-  "description": "Webcomponent e-receta following open-wc recommendations",
+  "description": "e-receta",
   "author": "e-receta",
   "license": "MIT",
   "dependencies": {
