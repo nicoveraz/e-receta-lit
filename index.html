@@ -5,12 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="Description" content="Receta Electrónica según NewtriLabs">
   <meta name="theme-color" content="rgb(63, 49, 245)">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' blob: 'sha256-4cR56OfyaAJD9eF65nu4t5euVirFkW9dyCi7nIGnawU=' 'sha256-IyhiMIuondwhVmupTgpPya/7ro5wZUaEhJXU2Vi2YgA='  'sha256-64Iou1OhCVUQurEH3v3zAWJ642V4QIIH1e7yOGmE6IU=' https://unpkg.com https://apis.google.com; font-src 'self' https://fonts.gstatic.com https://storage.googleapis.com data:; connect-src 'self' https://securetoken.googleapis.com https://firestore.googleapis.com https://googleapis.com https://www.googleapis.com https://us-central1-e-receta-4b81d.cloudfunctions.net; img-src 'self' https://www.google.com data:; style-src 'self' 'unsafe-inline'; manifest-src 'self'; frame-src https://e-receta.cl blob: https://e-receta-4b81d.firebaseapp.com; require-trusted-types-for 'script'">
+
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' blob: 'sha256-4cR56OfyaAJD9eF65nu4t5euVirFkW9dyCi7nIGnawU=' 'sha256-IyhiMIuondwhVmupTgpPya/7ro5wZUaEhJXU2Vi2YgA='  'sha256-64Iou1OhCVUQurEH3v3zAWJ642V4QIIH1e7yOGmE6IU=' https://unpkg.com https://apis.google.com; font-src 'self' https://fonts.gstatic.com https://storage.googleapis.com data:; connect-src 'self' https://securetoken.googleapis.com https://firestore.googleapis.com https://googleapis.com https://www.googleapis.com https://us-central1-e-receta-4b81d.cloudfunctions.net; img-src 'self' https://www.google.com data:; style-src 'self' 'unsafe-inline'; manifest-src 'self'; frame-src https://e-receta.cl blob: https://e-receta-4b81d.firebaseapp.com; base-uri 'self'; form-action 'none'">
+
+  <meta http-equiv="Referrer-Policy" content="no-referrer, strict-origin-when-cross-origin">
+
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" href="./images/favicon.ico">
   <link rel="apple-touch-icon" sizes="192x192" href="./images/manifest/icon-192x192.png">
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://storage.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com">
   <base href="/">
   <style>
     @font-face {
@@ -69,7 +74,7 @@
 <body>
   <e-receta title="eReceta NewtriLabs"></e-receta>
   <script type="module" src="./components/e-receta/e-receta.js"></script>
-  <script type="text/javascript" src="https://unpkg.com/@zxing/library@latest"></script>
+  <script src="https://unpkg.com/@zxing/library@0.15.2/umd/index.min.js" integrity="sha384-y5tssDUlEXZ3AH2h90FeltJc9wTP4VV905RLw7hEXxPK7/iQ4zRwD7BmmJWEXef4" crossorigin="anonymous"></script>
   <noscript>
     Please enable JavaScript to view this website.
   </noscript>

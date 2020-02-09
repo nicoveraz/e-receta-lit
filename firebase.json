@@ -19,6 +19,23 @@
             "value" : "no-cache"
           }
         ]
+      },
+      {
+        "source":"**",
+        "headers": [
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "frame-ancestors",
+            "value": "self"
+          },
+          {
+            "key": "require-trusted-types-for",
+            "value": "script"
+          }
+        ]
       }
     ]
   }
