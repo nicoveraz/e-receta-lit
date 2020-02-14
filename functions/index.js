@@ -93,12 +93,27 @@ async function run(datos){
 	}, {merge: true});
 
 	const delay = ms => new Promise(res => setTimeout(res, ms));
-	await delay(20000);
 
-	let txtCaptcha = await firestoreRef.collection('MEDICOS').doc(datos.uid).collection('DATOS').doc('LOGIN').get()
-	.then(async r => {
-		return await r.data().txtCaptcha;
-	});
+	const captcha = async (n) => {
+		console.log(n);
+		if(n === 1){
+			throw new Error('CAPTCHA equivocado');
+		}
+		return firestoreRef.collection('MEDICOS').doc(datos.uid).collection('DATOS').doc('LOGIN').get()
+			.then(async r => {
+				if(r.data().txtCaptcha){
+					return r.data().txtCaptcha;
+				} else {
+					await delay(1000);
+					return captcha(n - 1);
+				}
+			})
+			.catch(e => {
+				return e;
+			});
+	};
+
+	let txtCaptcha = await captcha(45);
 
 	
 	await page.click(USERNAME_SELECTOR);
@@ -215,7 +230,7 @@ async function cyrb53(str, seed = 0) {
     h1 = Math.imul(h1 ^ h1>>>16, 2246822507) ^ Math.imul(h2 ^ h2>>>13, 3266489909);
     h2 = Math.imul(h2 ^ h2>>>16, 2246822507) ^ Math.imul(h1 ^ h1>>>13, 3266489909);
     return 4294967296 * (2097151 & h2) + (h1>>>0);
-};
+}
 
 async function registraReceta(u, rp, rut, id){
 	let recetas = await firestoreRef.collection('MEDICOS').doc(u).collection('RECETAS');

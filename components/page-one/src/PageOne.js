@@ -220,7 +220,7 @@ export class PageOne extends LitElement {
       </vaadin-form-layout>
       <vaadin-form-layout class="form">
         <h5 colspan="2" style="color: ${this._user? 'black':'rgba(0,0,0,.3)'}">Paso 2: Validar Médico ${this._generaClave? okLogo : ''}</h5>
-        <p colspan="2" style="color: ${this._user? 'black':'rgba(0,0,0,.3)'}">(Sólo una vez: ingresar RUT y número de serie, con ello se obtiene registro Superintendencia de Salud, para validar el RUT es necesario completar, antes de 20 segundos, el texto del CAPTCHA)</p>
+        <p colspan="2" style="color: ${this._user? 'black':'rgba(0,0,0,.3)'}">(Sólo una vez: ingresar RUT y número de serie, con ello se obtiene registro Superintendencia de Salud, para validar el RUT es necesario completar, en sólo 1 intento, el texto del CAPTCHA)</p>
         <vaadin-text-field clear-button-visible id="rutDoc" error-message="Rut inválido" label="RUT" ?disabled=${!this._user || this._generaClave || this._captEnviado} .value="${this._rutDoc}" @input="${(e) => {e.target.value = `${e.target.value === '-'? e.target.value.replace('-', '') : e.target.value.split('').pop() != '-'? e.target.value.replace('-','').slice(0, -1) + '-' + e.target.value.slice(-1): e.target.value.replace('-','')}`; this._rutDoc = e.target.value; this._validaRut(e.target.value)}}"></vaadin-text-field>      
         <div>
           <vaadin-text-field class="texto-captcha" label="Nº de Serie o Documento (sin puntos)" .value="${this._numSerie}" ?disabled=${!this._rutValido  || this._generaClave || this._captEnviado} @input="${e => this._numSerie = e.target.value}"></vaadin-text-field>      
@@ -230,7 +230,7 @@ export class PageOne extends LitElement {
           <img ?hidden=${!this._captcha} src="data:image/png;base64,${this._captcha}">
         </div>
         <div>
-          <vaadin-text-field label="Texto CAPTCHA (minúsculas)" ?invalid="${(this._captcha && !this._txtCaptcha)}" error-message="Ingresar CAPTCHA (antes de 20 seg)" class="texto-captcha" .value="${this._txtCaptcha}" @input="${e => this._txtCaptcha = e.target.value}" ?disabled=${!this._captcha}></vaadin-text-field>       
+          <vaadin-text-field label="Texto CAPTCHA (minúsculas)" ?invalid="${(this._captcha && !this._txtCaptcha)}" error-message="Ingresar CAPTCHA (Sólo 1 intento)" class="texto-captcha" .value="${this._txtCaptcha}" @input="${e => this._txtCaptcha = e.target.value}" ?disabled=${!this._captcha}></vaadin-text-field>       
           <vaadin-button theme="primary" ?disabled=${!this._captcha} @click="${() => {this._enviaCaptcha(this._txtCaptcha); this._captEnviado = true; this._spinner = true;}}">Enviar</vaadin-button>            
         </div>
         <vaadin-text-field label="Estado Cédula Identidad" readonly .value="${(this._serieValida === true)? 'Cédula de Identidad Vigente': (this._serieValida === false)? 'No Vigente' : (this._serieValida === 'ERROR')? 'Error' : 'Pendiente'}" ?disabled=${!this._user}></vaadin-text-field>       
@@ -283,12 +283,12 @@ export class PageOne extends LitElement {
         this._email = user.email;
         const ref = firebase.firestore().collection('MEDICOS').doc(this._user).collection('DATOS').doc('LOGIN').onSnapshot(async r => {
           const data = await r.data();
-          this._rutDoc = await data.rut? data.rut : '';
-          this._medValido = await data.medico? data.medico : '';
-          this._serieValida = await data.ciVigente? data.ciVigente : '';
-          this._numSerie = await data.serie? data.serie : '';
-          this._captcha = await data.captcha? data.captcha : ''; 
-          this._nombreMed = await data.nombreMed? data.nombreMed : '';         
+          this._rutDoc = await data? data.rut? data.rut : '' : '';
+          this._medValido = await data? data.medico? data.medico : '' : '';
+          this._serieValida = await data? data.ciVigente? data.ciVigente : '' : '';
+          this._numSerie = await data? data.serie? data.serie : '' : '';
+          this._captcha = await data? data.captcha? data.captcha : '' : ''; 
+          this._nombreMed = await data? data.nombreMed? data.nombreMed : '' : '';         
         });
         const refKey = firebase.firestore().collection('MEDICOS').doc(this._user).collection('DATOS').doc('PUBKEY').onSnapshot(async r => {
           if(r.exists){
@@ -311,7 +311,10 @@ export class PageOne extends LitElement {
   updated(changedProps){
     if(this._medValido && this._serieValida){
       this._generaClave = true;
-    }   
+    } 
+    if(this._captcha){
+      this._spinner = false;
+    }  
   }
   _borraReceta(){
     this.shadowRoot.querySelector('#nombrePte').value = '';
@@ -331,6 +334,7 @@ export class PageOne extends LitElement {
       captcha: firebase.firestore.FieldValue.delete()
     },{merge: true})
     .then(r => {
+      this._spinner = true;
       this._txtCaptcha = '';
       this._captcha = null;
     });
@@ -459,7 +463,6 @@ export class PageOne extends LitElement {
     this._spinner = true;
     validaMed({uid: this._user, rut: r})
     .then(res => {
-      this._spinner = false;
       this._medValido = (res.data.prestador.codigoBusqueda == "Médico Cirujano");
     })
     .then(res => {
@@ -467,6 +470,13 @@ export class PageOne extends LitElement {
       .then(d => {
         this._spinner = false;
         this._serieValida = (d.data.message == 'Vigente');
+      })
+      .catch(e =>{ 
+        if(e === 'CAPTCHA equivocado'){
+          alert('Error CAPTCHA, contactar a soporte');
+        } else {
+          alert('Error al validar Cédula de Identidad');  
+        }
       });
     })
     .catch(function(error) {
