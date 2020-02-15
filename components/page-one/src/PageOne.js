@@ -463,13 +463,13 @@ export class PageOne extends LitElement {
     this._spinner = true;
     validaMed({uid: this._user, rut: r})
     .then(res => {
-      this._medValido = (res.data.prestador.codigoBusqueda == "Médico Cirujano");
+      this._medValido = (res.data.prestador.codigoBusqueda === "Médico Cirujano");
     })
     .then(res => {
       validaRutSerie({uid: u, rut: r, serie: s})
       .then(d => {
         this._spinner = false;
-        this._serieValida = (d.data.message == 'Vigente');
+        this._serieValida = (d.data.message === 'Vigente');
       })
       .catch(e =>{ 
         if(e === 'CAPTCHA equivocado'){

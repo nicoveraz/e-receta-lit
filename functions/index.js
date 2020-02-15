@@ -42,24 +42,26 @@ exports.validaMed = functions.https.onCall( async (data, context) => {
 
   var res = await rp(options)
 	.then(async resultado =>{
-		await admin.auth().setCustomUserClaims(context.auth.uid, {medicoQx: resultado.prestador.codigoBusqueda == 'Médico Cirujano'});
-		await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('CREDENCIALES').set({
-			medico: resultado.prestador
-		}, {merge: true});
-		await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('LOGIN').set({
-			medico: resultado.prestador.codigoBusqueda == 'Médico Cirujano',
-			nombreMed: `${resultado.prestador.nombres} ${resultado.prestador.apellidoPaterno} ${resultado.prestador.apellidoMaterno}`
-		}, {merge: true});
-		let puK = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('PUBKEY').set({
-			rut: data.rut,
-			nombreMed: `${resultado.prestador.nombres} ${resultado.prestador.apellidoPaterno} ${resultado.prestador.apellidoMaterno}`
-		}, {merge: true});
-		let rutMed = await firestoreRef.collection('CUENTASMED').doc(data.rut).set({
-			rut: data.rut,
-			email: context.auth.token.email,
-			nombreEmail: context.auth.token.name,
-			nombreMed: `${resultado.prestador.nombres} ${resultado.prestador.apellidoPaterno} ${resultado.prestador.apellidoMaterno}`
-		}, {merge: true});
+		if(resultado.prestador.codigoBusqueda == 'Médico Cirujano'){
+			await admin.auth().setCustomUserClaims(context.auth.uid, {medicoQx: resultado.prestador.codigoBusqueda === 'Médico Cirujano'});
+			await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('CREDENCIALES').set({
+				medico: resultado.prestador
+			}, {merge: true});
+			await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('LOGIN').set({
+				medico: resultado.prestador.codigoBusqueda == 'Médico Cirujano',
+				nombreMed: `${resultado.prestador.nombres} ${resultado.prestador.apellidoPaterno} ${resultado.prestador.apellidoMaterno}`
+			}, {merge: true});
+			let puK = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('PUBKEY').set({
+				rut: data.rut,
+				nombreMed: `${resultado.prestador.nombres} ${resultado.prestador.apellidoPaterno} ${resultado.prestador.apellidoMaterno}`
+			}, {merge: true});
+			let rutMed = await firestoreRef.collection('CUENTASMED').doc(data.rut).set({
+				rut: data.rut,
+				email: context.auth.token.email,
+				nombreEmail: context.auth.token.name,
+				nombreMed: `${resultado.prestador.nombres} ${resultado.prestador.apellidoPaterno} ${resultado.prestador.apellidoMaterno}`
+			}, {merge: true});
+		}		
     	return resultado;
 	});
   return res;
@@ -139,7 +141,7 @@ async function run(datos){
 	}, RESULT_SELECTOR);
 	txtCaptcha = null;
 	obj = {
-	  status: (result == "Vigente" ? true : false),
+	  status: (result === "Vigente" ? true : false),
 	  message: result
 	};
 
@@ -155,18 +157,25 @@ exports.validaSerie = functions.runWith(opts).https.onCall( async (datos, contex
 	  );
 	}
 	let data = await run(datos);
-	let resFirest = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('LOGIN').set({
-		ciVigente: data.status,
-		txtCaptcha: admin.firestore.FieldValue.delete()
-	}, {merge: true});
-	let resFirestCred = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('CREDENCIALES').set({
-		ciVigente: data.status
-	}, {merge: true});
-	await admin.auth().getUser(context.auth.uid).then(async r => {
-		const claims = await r.customClaims;
-		claims.ciVigente = true;
-		return admin.auth().setCustomUserClaims(context.auth.uid, claims);
-	});
+	if(!!data.message){
+		let resFirest = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('LOGIN').set({
+			ciVigente: data.status,
+			txtCaptcha: admin.firestore.FieldValue.delete()
+		}, {merge: true});
+		let resFirestCred = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('CREDENCIALES').set({
+			ciVigente: data.status
+		}, {merge: true});
+		await admin.auth().getUser(context.auth.uid).then(async r => {
+			const claims = await r.customClaims;
+			claims.ciVigente = (data.message === 'Vigente');
+			return admin.auth().setCustomUserClaims(context.auth.uid, claims);
+		});
+	} else {
+		throw new functions.https.HttpsError(
+		  'Error al validar Cédula'
+		);
+	}
+	
 	return data;
 });
 
