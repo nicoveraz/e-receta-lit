@@ -43,7 +43,12 @@ exports.validaMed = functions.https.onCall( async (data, context) => {
   var res = await rp(options)
 	.then(async resultado =>{
 		if(resultado.prestador.codigoBusqueda == 'Médico Cirujano'){
-			await admin.auth().setCustomUserClaims(context.auth.uid, {medicoQx: resultado.prestador.codigoBusqueda === 'Médico Cirujano'});
+			let cred = await admin.auth().getUser(context.auth.uid)
+			.then(async r => {
+				const claims = await r.customClaims;
+				claims.medicoQx = (resultado.prestador.codigoBusqueda === 'Médico Cirujano');
+				admin.auth().setCustomUserClaims(context.auth.uid, claims);
+			});
 			await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('CREDENCIALES').set({
 				medico: resultado.prestador
 			}, {merge: true});
@@ -158,47 +163,79 @@ exports.validaSerie = functions.runWith(opts).https.onCall( async (datos, contex
 	}
 	const intentos = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('LOGIN').get()
 	.then(async d =>{
-		if(d.data().intento === 3){
-			await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('LOGIN').update({
-				captcha: admin.firestore.FieldValue.delete(),
-				rut: admin.firestore.FieldValue.delete(),
-				serie: admin.firestore.FieldValue.delete(),
-				txtCaptcha: admin.firestore.FieldValue.delete(),
-				intento: admin.firestore.FieldValue.increment(1)
-			}).then(() => {
-				return 'Error: demasiados intentos';
-			});
+		if(d.data()){
+			if(d.data().intento >= 3){
+				return await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('LOGIN').update({
+					captcha: admin.firestore.FieldValue.delete(),
+					rut: admin.firestore.FieldValue.delete(),
+					serie: admin.firestore.FieldValue.delete(),
+					txtCaptcha: admin.firestore.FieldValue.delete(),
+					intento: admin.firestore.FieldValue.increment(1)
+				}).then(() => {
+					return 'Error: demasiados intentos';
+				});
+			} else {
+				let data = await run(datos);
+				if(data.message){					
+					let cred = await admin.auth().getUser(context.auth.uid)
+					.then(async r => {
+						const claims = await r.customClaims;
+						claims.ciVigente = (data.message === 'Vigente');
+						admin.auth().setCustomUserClaims(context.auth.uid, claims);
+					}).then(async () => {
+						let resFirest = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('LOGIN').set({
+							ciVigente: data.status,
+							txtCaptcha: admin.firestore.FieldValue.delete()
+						}, {merge: true});
+						let resFirestCred = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('CREDENCIALES').set({
+							ciVigente: data.status
+						}, {merge: true});
+					});				
+				} else {
+					await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('LOGIN').update({
+						captcha: admin.firestore.FieldValue.delete(),
+						rut: admin.firestore.FieldValue.delete(),
+						serie: admin.firestore.FieldValue.delete(),
+						txtCaptcha: admin.firestore.FieldValue.delete(),
+						intento: admin.firestore.FieldValue.increment(1)
+					});
+					return 'Error al validar Cédula';
+				}
+				
+				return data;
+			}
+		} else {
+			let data = await run(datos);
+			if(data.message){
+				let cred = await admin.auth().getUser(context.auth.uid)
+				.then(async r => {
+					const claims = await r.customClaims;
+					claims.ciVigente = (data.message === 'Vigente');
+					admin.auth().setCustomUserClaims(context.auth.uid, claims);
+				}).then(async () => {
+					let resFirest = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('LOGIN').set({
+						ciVigente: data.status,
+						txtCaptcha: admin.firestore.FieldValue.delete()
+					}, {merge: true});
+					let resFirestCred = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('CREDENCIALES').set({
+						ciVigente: data.status
+					}, {merge: true});
+				});				
+			} else {
+				await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('LOGIN').update({
+					captcha: admin.firestore.FieldValue.delete(),
+					rut: admin.firestore.FieldValue.delete(),
+					serie: admin.firestore.FieldValue.delete(),
+					txtCaptcha: admin.firestore.FieldValue.delete(),
+					intento: admin.firestore.FieldValue.increment(1)
+				});
+				return 'Error al validar Cédula';
+			}
+			
+			return data;
 		}
 	});
-	if(intentos === 'Error: demasiados intentos'){
-		return 'Error: demasiados intentos';
-	}
-	let data = await run(datos);
-	if(data.message){
-		let resFirest = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('LOGIN').set({
-			ciVigente: data.status,
-			txtCaptcha: admin.firestore.FieldValue.delete()
-		}, {merge: true});
-		let resFirestCred = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('CREDENCIALES').set({
-			ciVigente: data.status
-		}, {merge: true});
-		await admin.auth().getUser(context.auth.uid).then(async r => {
-			const claims = await r.customClaims;
-			claims.ciVigente = (data.message === 'Vigente');
-			return admin.auth().setCustomUserClaims(context.auth.uid, claims);
-		});
-	} else {
-		await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('LOGIN').update({
-			captcha: admin.firestore.FieldValue.delete(),
-			rut: admin.firestore.FieldValue.delete(),
-			serie: admin.firestore.FieldValue.delete(),
-			txtCaptcha: admin.firestore.FieldValue.delete(),
-			intento: admin.firestore.FieldValue.increment(1)
-		});
-		return 'Error al validar Cédula';
-	}
-	
-	return data;
+	return intentos;
 });
 
 exports.creaFirma = functions.https.onCall(async (datos, context) => {
@@ -213,6 +250,7 @@ exports.creaFirma = functions.https.onCall(async (datos, context) => {
 		);
 	}
 	return await admin.auth().getUser(context.auth.uid).then(async (userRecord) => {
+		console.log(userRecord.customClaims);
 		if(!!userRecord.customClaims.medicoQx && !!userRecord.customClaims.ciVigente){
 			const optionsKey = {
 	            userIds: [{ id: context.auth.uid }],

@@ -468,6 +468,10 @@ export class PageOne extends LitElement {
         alert('Error: demasiados intentos');
         return;
       }
+      else if(d.data === 'Error al validar Cédula'){
+        alert('Error al validar Cédula');
+        return;
+      }
       this._serieValida = (d.data.message === 'Vigente');
       return (d.data.message === 'Vigente');
     })
