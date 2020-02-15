@@ -28,7 +28,7 @@ exports.validaMed = functions.https.onCall( async (data, context) => {
 	.then(r => {
 		if(r.exists){
 			throw new functions.https.HttpsError(
-			  'existing-user'
+			 	'existing-user'
 			);
 		}
 	});
@@ -156,8 +156,25 @@ exports.validaSerie = functions.runWith(opts).https.onCall( async (datos, contex
 	    'permission-denied'
 	  );
 	}
+	const intentos = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('LOGIN').get()
+	.then(async d =>{
+		if(d.data().intento === 3){
+			await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('LOGIN').update({
+				captcha: admin.firestore.FieldValue.delete(),
+				rut: admin.firestore.FieldValue.delete(),
+				serie: admin.firestore.FieldValue.delete(),
+				txtCaptcha: admin.firestore.FieldValue.delete(),
+				intento: admin.firestore.FieldValue.increment(1)
+			}).then(() => {
+				return 'Error: demasiados intentos';
+			});
+		}
+	});
+	if(intentos === 'Error: demasiados intentos'){
+		return 'Error: demasiados intentos';
+	}
 	let data = await run(datos);
-	if(!!data.message){
+	if(data.message){
 		let resFirest = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('LOGIN').set({
 			ciVigente: data.status,
 			txtCaptcha: admin.firestore.FieldValue.delete()
@@ -171,9 +188,14 @@ exports.validaSerie = functions.runWith(opts).https.onCall( async (datos, contex
 			return admin.auth().setCustomUserClaims(context.auth.uid, claims);
 		});
 	} else {
-		throw new functions.https.HttpsError(
-		  'Error al validar Cédula'
-		);
+		await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('LOGIN').update({
+			captcha: admin.firestore.FieldValue.delete(),
+			rut: admin.firestore.FieldValue.delete(),
+			serie: admin.firestore.FieldValue.delete(),
+			txtCaptcha: admin.firestore.FieldValue.delete(),
+			intento: admin.firestore.FieldValue.increment(1)
+		});
+		return 'Error al validar Cédula';
 	}
 	
 	return data;

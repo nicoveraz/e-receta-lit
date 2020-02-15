@@ -230,7 +230,7 @@ export class PageOne extends LitElement {
           <img ?hidden=${!this._captcha} src="data:image/png;base64,${this._captcha}">
         </div>
         <div>
-          <vaadin-text-field label="Texto CAPTCHA (minúsculas)" ?invalid="${(this._captcha && !this._txtCaptcha)}" error-message="Ingresar CAPTCHA (Sólo 1 intento)" class="texto-captcha" .value="${this._txtCaptcha}" @input="${e => this._txtCaptcha = e.target.value}" ?disabled=${!this._captcha}></vaadin-text-field>       
+          <vaadin-text-field label="Texto CAPTCHA" ?invalid="${(this._captcha && !this._txtCaptcha)}" error-message="Ingresar CAPTCHA (Sólo 1 intento)" class="texto-captcha" .value="${this._txtCaptcha}" @input="${e => this._txtCaptcha = e.target.value}" ?disabled=${!this._captcha}></vaadin-text-field>       
           <vaadin-button theme="primary" ?disabled=${!this._captcha} @click="${() => {this._enviaCaptcha(this._txtCaptcha); this._captEnviado = true; this._spinner = true;}}">Enviar</vaadin-button>            
         </div>
         <vaadin-text-field label="Estado Cédula Identidad" readonly .value="${(this._serieValida === true)? 'Cédula de Identidad Vigente': (this._serieValida === false)? 'No Vigente' : (this._serieValida === 'ERROR')? 'Error' : 'Pendiente'}" ?disabled=${!this._user}></vaadin-text-field>       
@@ -461,30 +461,34 @@ export class PageOne extends LitElement {
     const validaMed = firebase.functions().httpsCallable('validaMed');
     const validaRutSerie = firebase.functions().httpsCallable('validaSerie');
     this._spinner = true;
-    validaMed({uid: this._user, rut: r})
-    .then(res => {
-      this._medValido = (res.data.prestador.codigoBusqueda === "Médico Cirujano");
-    })
-    .then(res => {
-      validaRutSerie({uid: u, rut: r, serie: s})
-      .then(d => {
-        this._spinner = false;
-        this._serieValida = (d.data.message === 'Vigente');
-      })
-      .catch(e =>{ 
-        if(e === 'CAPTCHA equivocado'){
-          alert('Error CAPTCHA, contactar a soporte');
-        } else {
-          alert('Error al validar Cédula de Identidad');  
-        }
-      });
-    })
-    .catch(function(error) {
-      if(error == 'existing-user'){
-        alert('ERROR: Usuario ya existe');
-      } else {
-        alert('ERROR: datos incorrectos');
+    validaRutSerie({uid: u, rut: r, serie: s})
+    .then(d => {
+      this._spinner = false;
+      if(d.data === 'Error: demasiados intentos'){
+        alert('Error: demasiados intentos');
+        return;
       }
+      this._serieValida = (d.data.message === 'Vigente');
+      return (d.data.message === 'Vigente');
+    })
+    .then(res => {
+      if(res === true){
+        validaMed({uid: this._user, rut: r})
+        .then(res => {
+          this._medValido = (res.data.prestador.codigoBusqueda === "Médico Cirujano");
+        })
+        .catch(function(error) {
+          if(error == 'existing-user'){
+            alert('ERROR: Usuario ya existe');
+          } else {
+            alert('ERROR: datos incorrectos');
+          }
+        });
+      }
+    })
+    .catch(e =>{ 
+      this._spinner = false;
+      console.log(e);
     });
   }
   _fxGeneraFirma(m, s, u, p){

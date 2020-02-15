@@ -103,7 +103,7 @@ export class PageMain extends LitElement {
         <h1 class="titulo">Bienvenido a</h1>
         <h1 class="titulo">e-receta</h1>
       </div>
-      <p class="version">Versión 0.1.12b</p>
+      <p class="version">Versión 0.1.13b</p>
       <h3>Experimento de NewtriLabs</h3>
       <h4>QR que incorpora receta encriptada y firma del médico con esquema llave pública/privada de 256bits</h4>
       <p class="texto">Proyecto creado con el fin de lograr transición desde receta tradicional en papel a receta electrónica en forma natural ya que receta QR puede ser impresa o compartida por medios digitales</p>
