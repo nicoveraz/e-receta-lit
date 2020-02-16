@@ -4,6 +4,8 @@ const rp = require('request-promise');
 var pgp = require('openpgp');
 const puppeteer = require('puppeteer');
 const crypto = require('crypto');
+
+
 const opts = {
   memory: '2GB', 
   timeoutSeconds: 180
@@ -340,10 +342,6 @@ exports.creaReceta = functions.https.onCall(async (datos, context) => {
 				return await r.data().clavePrivada;
 			});
 
-			// const pubK = functions.config().app.key;
-			// const apkey = (await pgp.key.readArmored(pubK)).keys;
-
-
 			let apkey = await firestoreRef.collection('APP').doc('CRED').get()
 			.then(async r => {
 				const pubK = await r.data().clavePublica;
@@ -401,7 +399,6 @@ exports.procesaQR = functions.https.onCall(async (datos, context) => {
 			.then(async r => {
 				return await r.data().clavePrivada;
 			});
-			// const pPh = functions.config().pph.key;
 
 			let pPh = await firestoreRef.collection('APP').doc('CRED').get()
 			.then(async r => {
