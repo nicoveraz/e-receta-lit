@@ -278,9 +278,11 @@ export class PageOne extends LitElement {
     `;
   }
   _claveUnica(){
-    const claveUnica = firebase.functions().httpsCallable('validaMed')
-    .then(r => console.log(r));
+    const claveUnica = firebase.functions().httpsCallable('claveUnica');
+    claveUnica().then(res => console.log(res));
   }
+
+
   firstUpdated(){
     firebase.auth().onAuthStateChanged((user) => {
       if (user) {
