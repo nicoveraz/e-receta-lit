@@ -20,35 +20,6 @@
             "value" : "no-cache"
           }
         ]
-      },
-      {
-        "source":"**",
-        "headers": [
-          {
-            "key": "X-Content-Type-Options",
-            "value": "nosniff"
-          },
-          {
-            "key": "X-Frame-Options",
-            "value": "SAMEORIGIN"
-          },
-          {
-            "key": "Referrer-Policy",
-            "value": "no-referrer"
-          },
-          {
-            "key": "Strict-Transport-Security",
-            "value": "max-age=63072000; includeSubDomains; preload"
-          },
-          {
-            "key": "Content-Security-Policy",
-            "value": "default-src 'none'; script-src 'self' blob: 'sha256-wYBuMfJrkNUkwVc9CLk+rQLkqJcHfQ1kWztVkkxNtbA=' 'sha256-iQH+D6cMjGk+tOzu5e9ZOnI5JbT3xfAEc+ZvxVGFBuI=' 'sha256-IyhiMIuondwhVmupTgpPya/7ro5wZUaEhJXU2Vi2YgA=' 'sha256-4cR56OfyaAJD9eF65nu4t5euVirFkW9dyCi7nIGnawU=' https://unpkg.com https://apis.google.com https://storage.googleapis.com/workbox-cdn/releases/; font-src 'self' https://fonts.gstatic.com https://storage.googleapis.com data:; connect-src 'self' https://securetoken.googleapis.com https://firestore.googleapis.com https://googleapis.com https://www.googleapis.com https://us-central1-e-receta-4b81d.cloudfunctions.net; img-src 'self' https://www.google.com data:; style-src 'self' 'unsafe-inline'; manifest-src 'self'; frame-src https://e-receta.cl blob: https://e-receta-4b81d.firebaseapp.com; base-uri 'self'; form-action 'none'; frame-ancestors 'self'; require-trusted-types-for 'script'"
-          },
-          {
-            "key": "Feature-Policy",
-            "value": "geolocation 'none'; midi 'none'; notifications 'none'; push 'none'; sync-xhr 'none'; microphone 'none'; camera 'self'; magnetometer 'none'; gyroscope 'none'; speaker 'none'; vibrate 'none'; fullscreen 'self'; payment 'none"
-          }
-        ]
       }
     ]
   }
