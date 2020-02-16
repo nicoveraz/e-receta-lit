@@ -568,7 +568,7 @@ exports.anulaProd = functions.https.onCall(async (data, context) => {
 
 exports.claveUnica = functions.https.onCall(async (data, context) => {
 	
-	const redirectUri = encodeURIComponent('https://test.e-receta.cl');
+	const redirectUri = await encodeURIComponent('https://test.e-receta.cl');
 	const clientId = '058258f80513405496e7cd88e2559579'; //debería is a functions config()
 	const clientSecret = '2a24f7ec0b554fa483da0b7f960ae2ff'; //debería is a functions config()
 	const state = crypto.randomBytes(48).toString('hex');
