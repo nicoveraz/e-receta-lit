@@ -1,5 +1,17 @@
 {
   "projects": {
     "default": "e-receta-4b81d"
+  },
+  "targets": {
+    "e-receta-4b81d": {
+      "hosting": {
+        "app": [
+          "e-receta-4b81d"
+        ],
+        "test": [
+          "test-e-receta"
+        ]
+      }
+    }
   }
 }

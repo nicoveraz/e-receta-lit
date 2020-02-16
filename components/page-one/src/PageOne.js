@@ -206,6 +206,7 @@ export class PageOne extends LitElement {
 
   render() {
     return html`
+    <vaadin-button @click="${() => this._claveUnica()}">TEST</vaadin-button>
     <div id="eReceta">
       <mwc-icon-button ?disabled=${!this._user} icon="close" style="float: right" @click="${() => this._salir()}" aria-label="Salir"></mwc-icon-button>
       <vaadin-form-layout class="form" style="margin-top: 48px;">  
@@ -275,6 +276,10 @@ export class PageOne extends LitElement {
     <div>
     <dile-spinner-modal ?active="${this._spinner}"></dile-spinner-modal>
     `;
+  }
+  _claveUnica(){
+    const claveUnica = firebase.functions().httpsCallable('validaMed')
+    .then(r => console.log(r));
   }
   firstUpdated(){
     firebase.auth().onAuthStateChanged((user) => {

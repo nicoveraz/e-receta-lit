@@ -564,3 +564,47 @@ exports.anulaProd = functions.https.onCall(async (data, context) => {
 	});
 });
 
+// FUNCIONES PARA USO DE CLAVEUNICA
+
+exports.claveUnica = functions.https.onCall(async (data, context) => {
+	
+	const redirectUri = encodeURIComponent('https://test.e-receta.cl');
+	const clientId = '058258f80513405496e7cd88e2559579'; //debería is a functions config()
+	const clientSecret = '2a24f7ec0b554fa483da0b7f960ae2ff'; //debería is a functions config()
+	const state = crypto.randomBytes(48).toString('hex');
+
+	const options = {
+		method: 'GET',
+		url: `https://accounts.claveunica.gob.cl/openid/authorize/?client_id?=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=openid run name&state=${state}`
+	};
+
+	const res = await rp(options)
+	.then(r => {
+		console.log(r);
+		return r;
+	});
+	return res;
+});
+
+// var request = require('request');
+
+// var headers = {
+//     'content-type': 'application/x-www-form-urlencoded; charset=UTF-8'
+// };
+
+// var dataString = 'client_id=CLIENT_ID& client_secret=CLIENT_SECRET& redirect_uri=URI_REDIRECT_ENCODEADA& grant_type=authorization_code& code=CODE& state=STATE';
+
+// var options = {
+//     url: 'https://accounts.claveunica.gob.cl/openid/token/',
+//     method: 'POST',
+//     headers: headers,
+//     body: dataString
+// };
+
+// function callback(error, response, body) {
+//     if (!error && response.statusCode == 200) {
+//         console.log(body);
+//     }
+// }
+
+// request(options, callback);
