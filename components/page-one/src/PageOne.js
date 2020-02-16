@@ -206,14 +206,14 @@ export class PageOne extends LitElement {
 
   render() {
     return html`
-    <vaadin-button @click="${() => this._ingresoClaveUnica()}">TEST CU</vaadin-button>
     <div id="eReceta">
       <mwc-icon-button ?disabled=${!this._user} icon="close" style="float: right" @click="${() => this._salir()}" aria-label="Salir"></mwc-icon-button>
       <vaadin-form-layout class="form" style="margin-top: 48px;">  
         <h5 colspan="2">Paso 1: Validar cuenta de correo electrónico ${this._user? okLogo : ''}</h5>
         <p colspan="2">(Puede ser cualquiera, con fines de prueba por ahora sólo Gmail. Único paso necesario por ahora para acceder al lector QR)</p>
         <div>
-          <vaadin-button theme="primary" @click="${() => this._signIn()}" ?disabled=${this._user}>Ingresar con Google</vaadin-button>   
+          <vaadin-button theme="primary" @click="${() => this._signIn()}" ?disabled=${this._user}>Ingresar con Google</vaadin-button>  
+          <vaadin-button @click="${() => this._ingresoClaveUnica()}">TEST CU</vaadin-button>
           ${this._email? html`
               <p style="margin-top: 10px;">Ingresó con el correo ${this._email}</p>
             `:html``}       
