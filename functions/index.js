@@ -4,6 +4,7 @@ const rp = require('request-promise');
 var pgp = require('openpgp');
 const puppeteer = require('puppeteer');
 const crypto = require('crypto');
+const { Issuer } = require('openid-client');
 
 
 const opts = {
@@ -564,47 +565,48 @@ exports.anulaProd = functions.https.onCall(async (data, context) => {
 	});
 });
 
+
+const { generators } = require('openid-client');
 // FUNCIONES PARA USO DE CLAVEUNICA
 
 exports.claveUnica = functions.https.onCall(async (data, context) => {
 	
-	const redirectUri = await encodeURIComponent('https://test.e-receta.cl');
-	const clientId = '058258f80513405496e7cd88e2559579'; //debería is a functions config()
-	const clientSecret = '2a24f7ec0b554fa483da0b7f960ae2ff'; //debería is a functions config()
-	const state = crypto.randomBytes(48).toString('hex');
+	const redirectUri = await encodeURIComponent('https://test.e-receta.cl/claveunica');
+	// console.log(redirectUri);
+	// const clientId = '058258f80513405496e7cd88e2559579'; //debería is a functions config()
+	// const clientSecret = '2a24f7ec0b554fa483da0b7f960ae2ff'; //debería is a functions config()
+	// const state = await crypto.randomBytes(16).toString('hex');
 
-	const options = {
-		method: 'GET',
-		url: `https://accounts.claveunica.gob.cl/openid/authorize/?client_id?=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=openid run name&state=${state}`
-	};
+	// const options = {
+	// 	method: 'GET',
+	// 	url: `https://accounts.claveunica.gob.cl/openid/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=openid%20run%20name&state=${state}`,
+	//     json: true
+	// };
 
-	const res = await rp(options)
-	.then(r => {
-		console.log(r);
-		return r;
-	});
-	return res;
+	return Issuer.discover('https://accounts.claveunica.gob.cl/openid') // => Promise
+	  .then(async (claveUnica) => {
+	    const client = await new claveUnica.Client({
+	    	client_id: '058258f80513405496e7cd88e2559579', //debería is a functions config()
+	    	client_secret: '2a24f7ec0b554fa483da0b7f960ae2ff', //debería is a functions config()
+	    	redirect_uris: ['https://test.e-receta.cl/claveunica'],
+	    	response_types: ['code']
+	    });
+	    return client;
+	  }).then(async c => {
+	  	const state = generators.state();
+	  	console.log(state);
+	  	return await c.authorizationUrl({
+	  	  scope: 'openid run name',
+	  	  state: state
+	  	});
+	  });
+
+	// console.log(options.url);
+
+	// const res = await rp(options)
+	// .then(r => {
+	// 	console.log(r);
+	// 	return r;
+	// });
+	// return res;
 });
-
-// var request = require('request');
-
-// var headers = {
-//     'content-type': 'application/x-www-form-urlencoded; charset=UTF-8'
-// };
-
-// var dataString = 'client_id=CLIENT_ID& client_secret=CLIENT_SECRET& redirect_uri=URI_REDIRECT_ENCODEADA& grant_type=authorization_code& code=CODE& state=STATE';
-
-// var options = {
-//     url: 'https://accounts.claveunica.gob.cl/openid/token/',
-//     method: 'POST',
-//     headers: headers,
-//     body: dataString
-// };
-
-// function callback(error, response, body) {
-//     if (!error && response.statusCode == 200) {
-//         console.log(body);
-//     }
-// }
-
-// request(options, callback);
