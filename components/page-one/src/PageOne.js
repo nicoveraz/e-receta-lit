@@ -278,8 +278,9 @@ export class PageOne extends LitElement {
     `;
   }
   _ingresoClaveUnica(){
-    const claveUnica = firebase.functions().httpsCallable('claveUnica');
-    claveUnica().then(res => console.log(res));
+    // const claveUnica = firebase.functions().httpsCallable('claveUnica');
+    // claveUnica().then(res => console.log(res));
+    console.log('bip');
   }
 
 
