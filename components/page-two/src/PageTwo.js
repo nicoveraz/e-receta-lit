@@ -6,6 +6,8 @@ import '@vaadin/vaadin-dialog/theme/lumo/vaadin-dialog.js';
 import 'dile-spinner/dile-spinner.js';
 
 import 'jspdf/dist/jspdf.min.js';
+import '@zxing/library/umd/index.min.js';
+// import './qr.min.js';
 
 import '@vaadin/vaadin-text-field/theme/lumo/vaadin-number-field.js';
 import '@vaadin/vaadin-text-field/theme/lumo/vaadin-text-field.js';
