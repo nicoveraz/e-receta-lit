@@ -6,6 +6,7 @@ import '@vaadin/vaadin-dialog/theme/lumo/vaadin-dialog.js';
 import 'dile-spinner/dile-spinner.js';
 
 import 'jspdf/dist/jspdf.min.js';
+import '@zxing/library/umd/index.min.js';
 
 import '@vaadin/vaadin-text-field/theme/lumo/vaadin-number-field.js';
 import '@vaadin/vaadin-text-field/theme/lumo/vaadin-text-field.js';
@@ -167,9 +168,9 @@ export class PageTwo extends LitElement {
         ${this._selectCamara? html`
           <mwc-icon-button-toggle ?on=${this._camaraFrontal} onIcon="camera_rear" offIcon="camera_front" ?disabled="${!this._selectCamara}" @click="${() => this._cambiaCamara()}"></mwc-icon-button-toggle>
           `:html``}
-        <dile-spinner ?active="${this._spinner}"></dile-spinner>
-        <video id="video" class="preview"></video>             
-        ${this._user? html`         
+        ${this._user? html` 
+          <dile-spinner ?active="${this._spinner}"></dile-spinner>
+          <video id="video" class="preview"></video>                     
           ` : html`
           <div class="ingreso">
             Debe ingresar con su email para acceder al lector QR
