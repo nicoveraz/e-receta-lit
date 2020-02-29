@@ -207,12 +207,9 @@ exports.validaSerie = functions.runWith(opts).https.onCall( async (datos, contex
 		} else {
 			let data = await run(datos);
 			if(data.message){
-				let cred = await admin.auth().getUser(context.auth.uid)
-				.then(async r => {
-					const claims = await r.customClaims;
-					claims.ciVigente = (data.message === 'Vigente');
-					admin.auth().setCustomUserClaims(context.auth.uid, claims);
-				}).then(async () => {
+				const claim = {ciVigente: (data.message === 'Vigente')};
+				let cred =  await admin.auth().setCustomUserClaims(context.auth.uid, claim)
+				.then(async () => {
 					let resFirest = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('LOGIN').set({
 						ciVigente: data.status,
 						txtCaptcha: admin.firestore.FieldValue.delete()

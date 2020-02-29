@@ -6,7 +6,7 @@
   },
   "devDependencies": {
     "@open-wc/building-rollup": "^0.19.4",
-    "es-dev-server": "^1.40.0",
+    "es-dev-server": "^1.40.1",
     "rimraf": "^2.6.3",
     "rollup": "^1.31.1"
   },
@@ -20,7 +20,7 @@
     "@material/mwc-icon-button-toggle": "^0.12.0",
     "@vaadin/vaadin-button": "^2.2.2",
     "@vaadin/vaadin-dialog": "^2.2.1",
-    "@vaadin/vaadin-form-layout": "^2.1.6",
+    "@vaadin/vaadin-form-layout": "^2.1.7",
     "@vaadin/vaadin-text-field": "^2.5.4",
     "dile-spinner": "^2.0.2",
     "firebase": "^7.9.1",
