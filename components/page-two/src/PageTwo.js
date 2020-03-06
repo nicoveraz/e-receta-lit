@@ -166,7 +166,11 @@ export class PageTwo extends LitElement {
     <div class="fondo">  
         <mwc-icon-button-toggle id="toggle" ?on="${this._toggle}" offIcon="cancel" onIcon="videocam" ?disabled="${!this._user}" @click="${() => this._camToggle()}"></mwc-icon-button-toggle>
         ${this._selectCamara? html`
-          <mwc-icon-button-toggle ?on=${this._camaraFrontal} onIcon="camera_rear" offIcon="camera_front" ?disabled="${!this._selectCamara}" @click="${() => this._cambiaCamara()}"></mwc-icon-button-toggle>
+          ${this._camaras.length < 3? html`
+            <mwc-icon-button-toggle ?on=${this._camaraFrontal} onIcon="camera_rear" offIcon="camera_front" ?disabled="${!this._selectCamara}" @click="${() => this._cambiaCamara()}"></mwc-icon-button-toggle>
+            ` : html`
+            <mwc-icon-button icon="camera_rear" ?disabled="${!this._selectCamara}" @click="${() => this._cambiaCamara()}"></mwc-icon-button>
+            `}
           `:html``}
         ${this._user? html` 
           <dile-spinner ?active="${this._spinner}"></dile-spinner>
@@ -254,8 +258,32 @@ export class PageTwo extends LitElement {
       return;
     }
     codeReader.reset();
-    (this._camaras[0].deviceId == this._selectedDeviceId)? (this._selectedDeviceId = this._camaras[1].deviceId) : (this._selectedDeviceId = this._camaras[0].deviceId);
+    if(!this._selectedDeviceId){
+      this._selectedDeviceId = this._camaras[0].deviceId;
+    } else {
+      const getCamara = (cam) => {
+        return cam.deviceId == this._selectedDeviceId;
+      };
+      let index = this._camaras.findIndex(getCamara) + 1;
+      this._selectedDeviceId = this._camaras[index].deviceId;
+    }
     this._escaneaQR();
+    // if(this._camaras.length < 3){
+    //   this._camaras[0].deviceId == this._selectedDeviceId? this._selectedDeviceId = this._camaras[1].deviceId : this._selectedDeviceId = this._camaras[0].deviceId;
+    //   this._escaneaQR();
+    // } else {
+    //   // manejar el caso para más de dos cámaras
+    //   if(!this._selectedDeviceId){
+    //     this._selectedDeviceId = this._camaras[0].deviceId;
+    //   } else {
+    //     const getCamara = (cam) => {
+    //       return cam.deviceId == this._selectedDeviceId;
+    //     };
+    //     let index = this._camaras.findIndex(getCamara) + 1;
+    //     this._selectedDeviceId = this._camaras[index].deviceId;
+    //   }
+    //   this._escaneaQR();
+    // }    
   }
   _escaneaQR(){
     this._spinner = false;
