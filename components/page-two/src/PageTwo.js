@@ -261,11 +261,13 @@ export class PageTwo extends LitElement {
     if(!this._selectedDeviceId){
       this._selectedDeviceId = this._camaras[0].deviceId;
     } else {
-      const getCamara = (cam) => {
-        return cam.deviceId == this._selectedDeviceId;
-      };
-      let index = this._camaras.findIndex(getCamara) + 1;
-      this._selectedDeviceId = this._camaras[index].deviceId;
+      const length = this._camaras.length;
+      let index = this._camaras.findIndex(i => i.deviceId === this._selectedDeviceId);
+      if(index === length){
+        this._selectedDeviceId = this._camaras[0].deviceId;
+      } else {
+        this._selectedDeviceId = this._camaras[index + 1].deviceId;
+      }
     }
     this._escaneaQR();
     // if(this._camaras.length < 3){
