@@ -262,30 +262,15 @@ export class PageTwo extends LitElement {
       this._selectedDeviceId = this._camaras[0].deviceId;
     } else {
       const length = this._camaras.length;
-      let index = this._camaras.findIndex(i => i.deviceId === this._selectedDeviceId);
-      if(index === length){
+      const index = this._camaras.findIndex(i => i.deviceId === this._selectedDeviceId);
+      console.log('cam', this._camaras);
+      if(index + 1 === length){
         this._selectedDeviceId = this._camaras[0].deviceId;
       } else {
         this._selectedDeviceId = this._camaras[index + 1].deviceId;
       }
     }
-    this._escaneaQR();
-    // if(this._camaras.length < 3){
-    //   this._camaras[0].deviceId == this._selectedDeviceId? this._selectedDeviceId = this._camaras[1].deviceId : this._selectedDeviceId = this._camaras[0].deviceId;
-    //   this._escaneaQR();
-    // } else {
-    //   // manejar el caso para más de dos cámaras
-    //   if(!this._selectedDeviceId){
-    //     this._selectedDeviceId = this._camaras[0].deviceId;
-    //   } else {
-    //     const getCamara = (cam) => {
-    //       return cam.deviceId == this._selectedDeviceId;
-    //     };
-    //     let index = this._camaras.findIndex(getCamara) + 1;
-    //     this._selectedDeviceId = this._camaras[index].deviceId;
-    //   }
-    //   this._escaneaQR();
-    // }    
+    this._escaneaQR();  
   }
   _escaneaQR(){
     this._spinner = false;
