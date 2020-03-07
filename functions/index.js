@@ -343,7 +343,7 @@ exports.creaReceta = functions.https.onCall(async (datos, context) => {
 				return await r.data().clavePrivada;
 			});
 
-			let apkey = await firestoreRef.collection('APP').doc('CRED').get()
+			let apkey = await firestoreRef.collection('APP').doc('CRED').get() //clave de la app, para encriptar datos. Podría rotarla por fecha
 			.then(async r => {
 				const pubK = await r.data().clavePublica;
 				const pubKR = await pgp.key.readArmored(pubK);
@@ -371,7 +371,7 @@ exports.creaReceta = functions.https.onCall(async (datos, context) => {
 			    publicKeys: apkey
 			};
 			return pgp.encrypt(options).then(async ciphertext => {
-			    qrData = await ciphertext.data; 
+			    qrData = await ciphertext.data; // aquí podría agregar un timestamp para poder rotar clave apkey
 			    registraReceta(context.auth.uid, receta.rpPte, receta.rutPte, idReceta);
 			    return {qr: qrData, id: idReceta};
 			});
@@ -395,19 +395,14 @@ exports.procesaQR = functions.https.onCall(async (datos, context) => {
 	return await admin.auth().getUser(context.auth.uid).then(async (userRecord) => {
 		if(!!userRecord.customClaims.medicoQx || !!userRecord.customClaims.farmacia){
 			const msg = datos.qr.text;
-			//const firma = functions.config().priv.key;
-			let firma = await firestoreRef.collection('APP').doc('CRED').get()
+
+			let cred = await firestoreRef.collection('APP').doc('CRED').get() //aquí tendría que acceder a las claves según timestamp en msg
 			.then(async r => {
-				return await r.data().clavePrivada;
+				return await {pPh: r.data().passPhrase, firma: r.data().clavePrivada};
 			});
 
-			let pPh = await firestoreRef.collection('APP').doc('CRED').get()
-			.then(async r => {
-				return await r.data().passPhrase;
-			});
-
-			let prKObj = (await pgp.key.readArmored(firma)).keys[0];
-			await prKObj.decrypt(pPh);
+			let prKObj = (await pgp.key.readArmored(cred.firma)).keys[0];
+			await prKObj.decrypt(cred.pPh);
 
 			const options = { 
 				message: (await pgp.message.readArmored(msg)), 
