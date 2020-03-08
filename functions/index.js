@@ -587,28 +587,29 @@ exports.claveUnica = functions.https.onCall(async (data, context) => {
 	  });
 });
 
-exports.appKey = functions.pubsub.schedule('every day 18:20').timeZone('America/Santiago').onRun(async (context) => {
+exports.appKey = functions.pubsub.schedule('every day 19:20').timeZone('America/Santiago').onRun(async (context) => {
 	const sk = new Paseto.SymmetricKey(new Paseto.V2());
-	sk.generate()
+	const timestamp = context.timestamp;
+	return sk.generate()
 	  .then(async () => {
 	    const encoder = sk.encode();
 	    const cred = await firestoreRef.collection('APP').orderBy('inicio', 'desc').limit(1);
-	    cred.get()
+	    return cred.get()
 	    .then(d => {
 	    	if(d.empty){
-	    		firestoreRef.collection('APP').add({
+	    		return firestoreRef.collection('APP').add({
 	    			credencial: encoder,
-	    			inicio: context.timestamp
+	    			inicio: timestamp
 	    		});
 	    	} else {
-	    		d.forEach(s => {
-	    			firestoreRef.collection('APP').document(s.id).update({
-	    				fin: context.timestamp
-	    			})
+	    		return d.forEach(s => {
+	    			return firestoreRef.collection('APP').document(s.id).set({
+	    				fin: timestamp
+	    			}, {merge: true})
 	    			.then(() => {
-	    				firestoreRef.collection('APP').add({
+	    				return firestoreRef.collection('APP').add({
 	    					credencial: encoder,
-	    					inicio: context.timestamp
+	    					inicio: timestamp
 	    				});
 	    			});
 	    		});
