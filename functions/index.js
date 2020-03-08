@@ -1,10 +1,11 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const rp = require('request-promise');
-var pgp = require('openpgp');
+const pgp = require('openpgp');
 const puppeteer = require('puppeteer');
 const crypto = require('crypto');
 const { Issuer } = require('openid-client');
+const Paseto = require('paseto.js');
 
 
 const opts = {
@@ -255,26 +256,21 @@ exports.creaFirma = functions.https.onCall(async (datos, context) => {
 	return await admin.auth().getUser(context.auth.uid).then(async (userRecord) => {
 		console.log(userRecord.customClaims);
 		if(!!userRecord.customClaims.medicoQx && !!userRecord.customClaims.ciVigente){
-			const optionsKey = {
-	            userIds: [{ id: context.auth.uid }],
-	            curve: "curve25519",
-	            passphrase: datos.passphrase
-	        };
 
 	        let privkey = null;
 	        let pubkey = null;
-	        let revocationCertificate = null;
-
-	        return pgp.generateKey(optionsKey).then(async (key) => {
-	          privkey = key.privateKeyArmored;
-	          pubkey = key.publicKeyArmored;
-	          revocationCertificate = key.revocationCertificate;
+	        const signer   = new Paseto.V2();
+	        signer.private()
+	        .then(k => {
+	        	privkey = k;
+	        	pubkey = privkey.public();
 	        })
 	        .then(async () => {
 	        	let prK = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('CREDENCIALES').set({
 	        		fechaClave: admin.firestore.FieldValue.serverTimestamp(),
 	        		clavePrivada: privkey,
-	        		clavePublica: pubkey
+	        		clavePublica: pubkey,
+	        		passphrase: datos.passphrase
 	        	}, {merge: true});
 	        	let puK = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('PUBKEY').set({
 	        		fechaClave: admin.firestore.FieldValue.serverTimestamp(),
@@ -338,10 +334,14 @@ exports.creaReceta = functions.https.onCall(async (datos, context) => {
 				return 'DATOS INCOMPLETOS';
 			}
 
-			let firma = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('CREDENCIALES').get()
+			const credenciales = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('CREDENCIALES').get()
 			.then(async r => {
-				return await r.data().clavePrivada;
-			});
+				return r.data();
+			})
+			if(credenciales.passphrase != pass){
+				return 'CLAVE INVÁLIDA';
+			}
+			const firma = await credenciales.clavePrivada;
 
 			let apkey = await firestoreRef.collection('APP').doc('CRED').get() //clave de la app, para encriptar datos. Podría rotarla por fecha
 			.then(async r => {
@@ -567,16 +567,6 @@ const { generators } = require('openid-client');
 exports.claveUnica = functions.https.onCall(async (data, context) => {
 	
 	const redirectUri = await encodeURIComponent('https://test.e-receta.cl/claveunica');
-	// console.log(redirectUri);
-	// const clientId = '058258f80513405496e7cd88e2559579'; //debería is a functions config()
-	// const clientSecret = '2a24f7ec0b554fa483da0b7f960ae2ff'; //debería is a functions config()
-	// const state = await crypto.randomBytes(16).toString('hex');
-
-	// const options = {
-	// 	method: 'GET',
-	// 	url: `https://accounts.claveunica.gob.cl/openid/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=openid%20run%20name&state=${state}`,
-	//     json: true
-	// };
 
 	return Issuer.discover('https://accounts.claveunica.gob.cl/openid') // => Promise
 	  .then(async (claveUnica) => {
@@ -595,13 +585,34 @@ exports.claveUnica = functions.https.onCall(async (data, context) => {
 	  	  state: state
 	  	});
 	  });
+});
 
-	// console.log(options.url);
-
-	// const res = await rp(options)
-	// .then(r => {
-	// 	console.log(r);
-	// 	return r;
-	// });
-	// return res;
+exports.appKey = functions.pubsub.schedule('every day 18:20').timeZone('America/Santiago').onRun(async (context) => {
+	const sk = new Paseto.SymmetricKey(new Paseto.V2());
+	sk.generate()
+	  .then(async () => {
+	    const encoder = sk.encode();
+	    const cred = await firestoreRef.collection('APP').orderBy('inicio', 'desc').limit(1);
+	    cred.get()
+	    .then(d => {
+	    	if(d.empty){
+	    		firestoreRef.collection('APP').add({
+	    			credencial: encoder,
+	    			inicio: context.timestamp
+	    		});
+	    	} else {
+	    		d.forEach(s => {
+	    			firestoreRef.collection('APP').document(s.id).update({
+	    				fin: context.timestamp
+	    			})
+	    			.then(() => {
+	    				firestoreRef.collection('APP').add({
+	    					credencial: encoder,
+	    					inicio: context.timestamp
+	    				});
+	    			});
+	    		});
+	    	}
+	    });
+	  });
 });
