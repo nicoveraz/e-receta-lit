@@ -207,6 +207,7 @@ export class PageOne extends LitElement {
   render() {
     return html`
     <div id="eReceta">
+      <vaadin-button theme="primary" @click="${() => this._public()}">TEST</vaadin-button>  
       <mwc-icon-button ?disabled=${!this._user} icon="close" style="float: right" @click="${() => this._salir()}" aria-label="Salir"></mwc-icon-button>
       <vaadin-form-layout class="form" style="margin-top: 48px;">  
         <h5 colspan="2">Paso 1: Validar cuenta de correo electrónico ${this._user? okLogo : ''}</h5>
@@ -281,6 +282,11 @@ export class PageOne extends LitElement {
     // const claveUnica = firebase.functions().httpsCallable('claveUnica');
     // claveUnica().then(res => console.log(res));
     console.log('bip');
+  }
+
+  _public(){
+    const firmaMedico = firebase.functions().httpsCallable('firmaMedico');
+    firmaMedico().then(res => console.log(res));
   }
 
 

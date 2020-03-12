@@ -4,8 +4,9 @@ const rp = require('request-promise');
 const pgp = require('openpgp');
 const puppeteer = require('puppeteer');
 const crypto = require('crypto');
-const { Issuer } = require('openid-client');
+//const { Issuer } = require('openid-client');
 const Paseto = require('paseto.js');
+const sodium = require('libsodium-wrappers');
 
 
 const opts = {
@@ -561,33 +562,33 @@ exports.anulaProd = functions.https.onCall(async (data, context) => {
 });
 
 
-const { generators } = require('openid-client');
+//const { generators } = require('openid-client');
 // FUNCIONES PARA USO DE CLAVEUNICA
 
 exports.claveUnica = functions.https.onCall(async (data, context) => {
-	
-	const redirectUri = await encodeURIComponent('https://test.e-receta.cl/claveunica');
+	return;
+	// const redirectUri = await encodeURIComponent('https://test.e-receta.cl/claveunica');
 
-	return Issuer.discover('https://accounts.claveunica.gob.cl/openid') // => Promise
-	  .then(async (claveUnica) => {
-	    const client = await new claveUnica.Client({
-	    	client_id: '058258f80513405496e7cd88e2559579', //debería is a functions config()
-	    	client_secret: '2a24f7ec0b554fa483da0b7f960ae2ff', //debería is a functions config()
-	    	redirect_uris: ['https://test.e-receta.cl/claveunica'],
-	    	response_types: ['code']
-	    });
-	    return client;
-	  }).then(async c => {
-	  	const state = generators.state();
-	  	console.log(state);
-	  	return await c.authorizationUrl({
-	  	  scope: 'openid run name',
-	  	  state: state
-	  	});
-	  });
+	// return Issuer.discover('https://accounts.claveunica.gob.cl/openid') // => Promise
+	//   .then(async (claveUnica) => {
+	//     const client = await new claveUnica.Client({
+	//     	client_id: '058258f80513405496e7cd88e2559579', //debería is a functions config()
+	//     	client_secret: '2a24f7ec0b554fa483da0b7f960ae2ff', //debería is a functions config()
+	//     	redirect_uris: ['https://test.e-receta.cl/claveunica'],
+	//     	response_types: ['code']
+	//     });
+	//     return client;
+	//   }).then(async c => {
+	//   	const state = generators.state();
+	//   	console.log(state);
+	//   	return await c.authorizationUrl({
+	//   	  scope: 'openid run name',
+	//   	  state: state
+	//   	});
+	//   });
 });
 
-exports.appKey = functions.pubsub.schedule('every day 19:20').timeZone('America/Santiago').onRun(async (context) => {
+exports.appKey = functions.pubsub.schedule('every day 05:00').timeZone('America/Santiago').onRun(async (context) => {
 	const sk = new Paseto.SymmetricKey(new Paseto.V2());
 	const timestamp = context.timestamp;
 	return sk.generate()
@@ -603,7 +604,7 @@ exports.appKey = functions.pubsub.schedule('every day 19:20').timeZone('America/
 	    		});
 	    	} else {
 	    		return d.forEach(s => {
-	    			return firestoreRef.collection('APP').document(s.id).set({
+	    			return firestoreRef.collection('APP').doc(s.id).set({
 	    				fin: timestamp
 	    			}, {merge: true})
 	    			.then(() => {
@@ -616,4 +617,29 @@ exports.appKey = functions.pubsub.schedule('every day 19:20').timeZone('America/
 	    	}
 	    });
 	  });
+});
+
+exports.firmaMedico = functions.https.onCall(async (datos, context) => {
+	// const message = 'A screaming comes across the sky.';
+	// const cred = await firestoreRef.collection('APP').orderBy('inicio', 'desc').limit(1);
+	// let key;
+	// return await cred.get()
+	// .then(async d => {
+	// 	return await d.forEach(async s => {
+	// 		key = await s.data().credencial;
+	// 		return await key;
+	// 	});		
+	// }).then(async () =>{
+	// 	let sk  = await new Paseto.SymmetricKey(new Paseto.V2());
+	// 	return await sk.base64(key)
+	// 	.then(async () => {
+	// 		console.log(sk);
+	// 		const encoder = sk.protocol();
+	// 		return encoder.encrypt(message, sk);
+	// 	});
+	// });
+
+	return sodium.ready.then(() => {
+		return sodium.crypto_sign_keypair();
+	});
 });
