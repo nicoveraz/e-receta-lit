@@ -6,7 +6,7 @@ const puppeteer = require('puppeteer');
 const crypto = require('crypto');
 //const { Issuer } = require('openid-client');
 const Paseto = require('paseto.js');
-const sodium = require('libsodium-wrappers');
+const sodium = require('libsodium-wrappers-sumo');
 
 
 const opts = {
@@ -639,7 +639,19 @@ exports.firmaMedico = functions.https.onCall(async (datos, context) => {
 	// 	});
 	// });
 
-	return sodium.ready.then(() => {
-		return sodium.crypto_sign_keypair();
+	return sodium.ready.then(async () => {
+		const message = 'bip';
+		let sk = await new Paseto.PrivateKey(new Paseto.V2());
+		const raw = sodium.crypto_sign_keypair();
+		console.log(sodium.to_base64(Buffer.from(raw.privateKey), sodium.base64_variants.URLSAFE_NO_PADDING));
+		console.log(sodium.to_base64(Buffer.from(raw.publicKey), sodium.base64_variants.URLSAFE_NO_PADDING));
+		// return sk.inject(Buffer.from(raw.privateKey))
+		// .then(async () =>{
+		// 	const encoder = sk.protocol();
+		// 	return encoder.encrypt(message, sk);
+		// })
+		// .then(token => {
+		// 	return token;
+		// });
 	});
 });
