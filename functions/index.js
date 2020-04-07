@@ -6,8 +6,6 @@ const puppeteer = require('puppeteer');
 const crypto = require('crypto');
 //const { Issuer } = require('openid-client');
 const Paseto = require('paseto.js');
-const sodium = require('libsodium-wrappers-sumo');
-
 
 const opts = {
   memory: '2GB', 
@@ -257,15 +255,11 @@ exports.creaFirma = functions.https.onCall(async (datos, context) => {
 	return await admin.auth().getUser(context.auth.uid).then(async (userRecord) => {
 		console.log(userRecord.customClaims);
 		if(!!userRecord.customClaims.medicoQx && !!userRecord.customClaims.ciVigente){
-
-	        let privkey = null;
-	        let pubkey = null;
-	        const signer   = new Paseto.V2();
-	        signer.private()
-	        .then(k => {
-	        	privkey = k;
-	        	pubkey = privkey.public();
-	        })
+			sodium.ready.then(async () => {
+				const raw = sodium.crypto_sign_keypair();
+				const privkey = sodium.to_base64(Buffer.from(raw.privateKey), sodium.base64_variants.URLSAFE_NO_PADDING);
+				const pubkey = sodium.to_base64(Buffer.from(raw.publicKey), sodium.base64_variants.URLSAFE_NO_PADDING);
+			})			
 	        .then(async () => {
 	        	let prK = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('CREDENCIALES').set({
 	        		fechaClave: admin.firestore.FieldValue.serverTimestamp(),
@@ -620,38 +614,37 @@ exports.appKey = functions.pubsub.schedule('every day 05:00').timeZone('America/
 });
 
 exports.firmaMedico = functions.https.onCall(async (datos, context) => {
-	// const message = 'A screaming comes across the sky.';
-	// const cred = await firestoreRef.collection('APP').orderBy('inicio', 'desc').limit(1);
-	// let key;
-	// return await cred.get()
-	// .then(async d => {
-	// 	return await d.forEach(async s => {
-	// 		key = await s.data().credencial;
-	// 		return await key;
-	// 	});		
-	// }).then(async () =>{
-	// 	let sk  = await new Paseto.SymmetricKey(new Paseto.V2());
-	// 	return await sk.base64(key)
-	// 	.then(async () => {
-	// 		console.log(sk);
-	// 		const encoder = sk.protocol();
-	// 		return encoder.encrypt(message, sk);
-	// 	});
-	// });
+	const message = JSON.stringify({rut: '14143467-5', rp: 'Ibuprofeno 400mg, 1 cp vo cada 8h por 5 días', p: 'Nicolás Vera Zúñiga'});
+	let key;
 
-	return sodium.ready.then(async () => {
-		const message = 'bip';
-		let sk = await new Paseto.PrivateKey(new Paseto.V2());
-		const raw = sodium.crypto_sign_keypair();
-		console.log(sodium.to_base64(Buffer.from(raw.privateKey), sodium.base64_variants.URLSAFE_NO_PADDING));
-		console.log(sodium.to_base64(Buffer.from(raw.publicKey), sodium.base64_variants.URLSAFE_NO_PADDING));
-		// return sk.inject(Buffer.from(raw.privateKey))
-		// .then(async () =>{
-		// 	const encoder = sk.protocol();
-		// 	return encoder.encrypt(message, sk);
-		// })
-		// .then(token => {
-		// 	return token;
-		// });
+	const priv = new Paseto.PrivateKey(new Paseto.V2());    
+	await priv.generate();    
+	const pub = await priv.public();                                                      
+
+	const prk = await priv.encode();
+	const puk = await pub.encode();
+
+	const signer = new Paseto.PrivateKey(new Paseto.V2());
+	return signer.base64(prk)
+	.then(() => {
+		const pr = signer.protocol();
+		return pr.sign(message, signer);
+	})
+	.then(async s => {
+		const cred = await firestoreRef.collection('APP').orderBy('inicio', 'desc').limit(1);
+		return await cred.get()
+		.then(async d => {
+			return await d.forEach(async k => {
+				key = await k.data().credencial;
+				return await key;
+			});		
+		}).then(async () =>{
+			let sk  = await new Paseto.SymmetricKey(new Paseto.V2());
+			return await sk.base64(key)
+			.then(async () => {
+				const encoder = sk.protocol();
+				return await encoder.encrypt(s, sk, `${Date.now()}`);
+			});
+		});
 	});
 });

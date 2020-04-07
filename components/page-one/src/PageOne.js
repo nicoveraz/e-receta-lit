@@ -286,7 +286,10 @@ export class PageOne extends LitElement {
 
   _public(){
     const firmaMedico = firebase.functions().httpsCallable('firmaMedico');
-    firmaMedico().then(res => console.log(res));
+    firmaMedico().then(r =>{ 
+      console.log(r);
+      this._qr = r.data;
+    });
   }
 
 
