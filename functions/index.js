@@ -328,43 +328,43 @@ exports.creaReceta = functions.https.onCall(async (datos, context) => {
 			const credenciales = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('CREDENCIALES').get()
 			.then(async r => {
 				return r.data();
-			})
+			});
 			if(credenciales.passphrase != pass){
 				return 'CLAVE INVÁLIDA';
 			}
-			const firma = await credenciales.clavePrivada;
-
-			let apkey = await firestoreRef.collection('APP').doc('CRED').get() //clave de la app, para encriptar datos. Podría rotarla por fecha
-			.then(async r => {
-				const pubK = await r.data().clavePublica;
-				const pubKR = await pgp.key.readArmored(pubK);
-				return pubKR.keys;
-			}).catch(e => console.log('ERROR apkey: ', e));
-
-			let privKeyObj = (await pgp.key.readArmored(firma)).keys[0];
-			await privKeyObj.decrypt(pass);
-
+			const prk = await credenciales.clavePrivada;
+			
 			const idReceta = await crypto.randomBytes(20).toString('hex');
 
-			const optionsSign = {
-			    message: pgp.cleartext.fromText(JSON.stringify({i: idReceta, u: context.auth.uid, n: receta.nombrePte, e: receta.edadPte, d: receta.direccionPte, r: receta.rutPte, f: new Date().toLocaleDateString(), rp: receta.rpPte})),
-			    privateKeys: [privKeyObj]
-			};			
+			const message = JSON.stringify({i: idReceta, u: context.auth.uid, n: receta.nombrePte, e: receta.edadPte, d: receta.direccionPte, r: receta.rutPte, f: new Date().toLocaleDateString(), rp: receta.rpPte});
 
-			let mjeFirmado = await pgp.sign(optionsSign).then(async signed => {
-			    return await signed.data;	    
-			}).catch(e => {
-				console.log(e);
-				return e;
-			});
-			const options = {
-			    message: pgp.message.fromText(`${context.auth.uid}${mjeFirmado}`),
-			    publicKeys: apkey
-			};
-			return pgp.encrypt(options).then(async ciphertext => {
-			    qrData = await ciphertext.data; // aquí podría agregar un timestamp para poder rotar clave apkey
-			    registraReceta(context.auth.uid, receta.rpPte, receta.rutPte, idReceta);
-			    return {qr: qrData, id: idReceta};
+			let key;
+
+			const signer = new Paseto.PrivateKey(new Paseto.V2());
+			return signer.base64(prk)
+			.then(() => {
+				const pr = signer.protocol();
+				return pr.sign(message, signer, `${context.auth.uid}`);
+			})
+			.then(async s => {
+				const cred = await firestoreRef.collection('APP').orderBy('inicio', 'desc').limit(1);
+				return await cred.get()
+				.then(async d => {
+					return await d.forEach(async k => {
+						key = await k.data().credencial;
+						return await key;
+					});		
+				}).then(async () =>{
+					let sk  = await new Paseto.SymmetricKey(new Paseto.V2());
+					return await sk.base64(key)
+					.then(async () => {
+						const encoder = sk.protocol();
+						const qr = await encoder.encrypt(s, sk, `${Date.now()}`);
+						const datos = await {qr: qr, id: idReceta};
+						await registraReceta(context.auth.uid, receta.rpPte, receta.rutPte, idReceta);
+						return await datos;
+					});
+				});
 			});
 		} else {
 			return 'CREDENCIALES INCOMPLETAS';
@@ -551,34 +551,6 @@ exports.anulaProd = functions.https.onCall(async (data, context) => {
 	});
 });
 
-
-//const { generators } = require('openid-client');
-// FUNCIONES PARA USO DE CLAVEUNICA
-
-exports.claveUnica = functions.https.onCall(async (data, context) => {
-	  	
-	 return;
-	// const redirectUri = await encodeURIComponent('https://test.e-receta.cl/claveunica');
-
-	// return Issuer.discover('https://accounts.claveunica.gob.cl/openid') // => Promise
-	//   .then(async (claveUnica) => {
-	//     const client = await new claveUnica.Client({
-	//     	client_id: '058258f80513405496e7cd88e2559579', //debería is a functions config()
-	//     	client_secret: '2a24f7ec0b554fa483da0b7f960ae2ff', //debería is a functions config()
-	//     	redirect_uris: ['https://test.e-receta.cl/claveunica'],
-	//     	response_types: ['code']
-	//     });
-	//     return client;
-	//   }).then(async c => {
-	//   	const state = generators.state();
-	//   	console.log(state);
-	//   	return await c.authorizationUrl({
-	//   	  scope: 'openid run name',
-	//   	  state: state
-	//   	});
-	//   });
-});
-
 exports.appKey = functions.pubsub.schedule('every day 05:00').timeZone('America/Santiago').onRun(async (context) => {
 	const sk = new Paseto.SymmetricKey(new Paseto.V2());
 	const timestamp = context.timestamp;
@@ -610,38 +582,65 @@ exports.appKey = functions.pubsub.schedule('every day 05:00').timeZone('America/
 	  });
 });
 
-exports.firmaMedico = functions.https.onCall(async (datos, context) => {
-	const message = JSON.stringify({rut: '14143467-5', rp: 'Ibuprofeno 400mg, 1 cp vo cada 8h por 5 días', p: 'Nicolás Vera Zúñiga'});
-	let key;
+//const { generators } = require('openid-client');
+// FUNCIONES PARA USO DE CLAVEUNICA
 
-	const priv = new Paseto.PrivateKey(new Paseto.V2());    
-	await priv.generate();    
-	const pub = await priv.public();                                                      
+// exports.claveUnica = functions.https.onCall(async (data, context) => {
+	  	
+// 	 return;
+// 	// const redirectUri = await encodeURIComponent('https://test.e-receta.cl/claveunica');
 
-	const prk = await priv.encode();
-	const puk = await pub.encode();
+// 	// return Issuer.discover('https://accounts.claveunica.gob.cl/openid') // => Promise
+// 	//   .then(async (claveUnica) => {
+// 	//     const client = await new claveUnica.Client({
+// 	//     	client_id: '058258f80513405496e7cd88e2559579', //debería is a functions config()
+// 	//     	client_secret: '2a24f7ec0b554fa483da0b7f960ae2ff', //debería is a functions config()
+// 	//     	redirect_uris: ['https://test.e-receta.cl/claveunica'],
+// 	//     	response_types: ['code']
+// 	//     });
+// 	//     return client;
+// 	//   }).then(async c => {
+// 	//   	const state = generators.state();
+// 	//   	console.log(state);
+// 	//   	return await c.authorizationUrl({
+// 	//   	  scope: 'openid run name',
+// 	//   	  state: state
+// 	//   	});
+// 	//   });
+// });
 
-	const signer = new Paseto.PrivateKey(new Paseto.V2());
-	return signer.base64(prk)
-	.then(() => {
-		const pr = signer.protocol();
-		return pr.sign(message, signer);
-	})
-	.then(async s => {
-		const cred = await firestoreRef.collection('APP').orderBy('inicio', 'desc').limit(1);
-		return await cred.get()
-		.then(async d => {
-			return await d.forEach(async k => {
-				key = await k.data().credencial;
-				return await key;
-			});		
-		}).then(async () =>{
-			let sk  = await new Paseto.SymmetricKey(new Paseto.V2());
-			return await sk.base64(key)
-			.then(async () => {
-				const encoder = sk.protocol();
-				return await encoder.encrypt(s, sk, `${Date.now()}`);
-			});
-		});
-	});
-});
+// exports.firmaMedico = functions.https.onCall(async (datos, context) => {
+// 	const message = JSON.stringify({rut: '14143467-5', rp: 'Ibuprofeno 400mg, 1 cp vo cada 8h por 5 días', p: 'Nicolás Vera Zúñiga'});
+// 	let key;
+
+// 	const priv = new Paseto.PrivateKey(new Paseto.V2());    
+// 	await priv.generate();    
+// 	const pub = await priv.public();                                                      
+
+// 	const prk = await priv.encode();
+// 	const puk = await pub.encode();
+
+// 	const signer = new Paseto.PrivateKey(new Paseto.V2());
+// 	return signer.base64(prk)
+// 	.then(() => {
+// 		const pr = signer.protocol();
+// 		return pr.sign(message, signer);
+// 	})
+// 	.then(async s => {
+// 		const cred = await firestoreRef.collection('APP').orderBy('inicio', 'desc').limit(1);
+// 		return await cred.get()
+// 		.then(async d => {
+// 			return await d.forEach(async k => {
+// 				key = await k.data().credencial;
+// 				return await key;
+// 			});		
+// 		}).then(async () =>{
+// 			let sk  = await new Paseto.SymmetricKey(new Paseto.V2());
+// 			return await sk.base64(key)
+// 			.then(async () => {
+// 				const encoder = sk.protocol();
+// 				return await encoder.encrypt(s, sk, `${Date.now()}`);
+// 			});
+// 		});
+// 	});
+// });
