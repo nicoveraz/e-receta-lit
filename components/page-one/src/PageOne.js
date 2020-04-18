@@ -279,9 +279,9 @@ export class PageOne extends LitElement {
     `;
   }
   _ingresoClaveUnica(){
-    // const claveUnica = firebase.functions().httpsCallable('claveUnica');
-    // claveUnica().then(res => console.log(res));
-    console.log('bip');
+    const claveUnica = firebase.functions().httpsCallable('claveUnica');
+    claveUnica().then(res => console.log(res));
+    // console.log('bip');
   }
 
   _public(){
@@ -494,8 +494,10 @@ export class PageOne extends LitElement {
     })
     .then(res => {
       if(res === true){
+        this._spinner = true;
         validaMed({uid: this._user, rut: r})
         .then(res => {
+          this._spinner = false;
           this._medValido = (res.data.prestador.codigoBusqueda === "Médico Cirujano");
         })
         .catch(function(error) {

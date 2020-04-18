@@ -1,6 +1,6 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
-const rp = require('request-promise');
+const axios = require('axios');
 const pgp = require('openpgp');
 const puppeteer = require('puppeteer');
 const crypto = require('crypto');
@@ -38,41 +38,36 @@ exports.validaMed = functions.https.onCall( async (data, context) => {
   	const rut = data.rut.substring(0, data.rut.indexOf('-'));
 	const dataString = functions.config().supersalud.key;
 	const url = `https://api.superdesalud.gob.cl/prestadores/v1/prestadores/${rut}.json/?auth_key=${dataString}`;
-	var options = {
-		url: url,
-		json: true
-	};
-
-  var res = await rp(options)
+  return axios({method: 'get', url: url, responseType: 'json'})
 	.then(async resultado =>{
-		if(resultado.prestador.codigoBusqueda == 'Médico Cirujano'){
+		let res = await resultado.data;
+		if(res.prestador.codigoBusqueda == 'Médico Cirujano'){
 			let cred = await admin.auth().getUser(context.auth.uid)
 			.then(async r => {
 				const claims = await r.customClaims;
-				claims.medicoQx = (resultado.prestador.codigoBusqueda === 'Médico Cirujano');
+				claims.medicoQx = (res.prestador.codigoBusqueda === 'Médico Cirujano');
 				admin.auth().setCustomUserClaims(context.auth.uid, claims);
 			});
 			await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('CREDENCIALES').set({
-				medico: resultado.prestador
+				medico: res.prestador
 			}, {merge: true});
 			await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('LOGIN').set({
-				medico: resultado.prestador.codigoBusqueda == 'Médico Cirujano',
-				nombreMed: `${resultado.prestador.nombres} ${resultado.prestador.apellidoPaterno} ${resultado.prestador.apellidoMaterno}`
+				medico: res.prestador.codigoBusqueda == 'Médico Cirujano',
+				nombreMed: `${res.prestador.nombres} ${res.prestador.apellidoPaterno} ${res.prestador.apellidoMaterno}`
 			}, {merge: true});
 			let puK = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('PUBKEY').set({
 				rut: data.rut,
-				nombreMed: `${resultado.prestador.nombres} ${resultado.prestador.apellidoPaterno} ${resultado.prestador.apellidoMaterno}`
+				nombreMed: `${res.prestador.nombres} ${res.prestador.apellidoPaterno} ${res.prestador.apellidoMaterno}`
 			}, {merge: true});
 			let rutMed = await firestoreRef.collection('CUENTASMED').doc(data.rut).set({
 				rut: data.rut,
 				email: context.auth.token.email,
 				nombreEmail: context.auth.token.name,
-				nombreMed: `${resultado.prestador.nombres} ${resultado.prestador.apellidoPaterno} ${resultado.prestador.apellidoMaterno}`
+				nombreMed: `${res.prestador.nombres} ${res.prestador.apellidoPaterno} ${res.prestador.apellidoMaterno}`
 			}, {merge: true});
 		}		
-    	return resultado;
+    	return res;
 	});
-  return res;
 });
 
 
@@ -253,30 +248,31 @@ exports.creaFirma = functions.https.onCall(async (datos, context) => {
 		);
 	}
 	return await admin.auth().getUser(context.auth.uid).then(async (userRecord) => {
-		console.log(userRecord.customClaims);
 		if(!!userRecord.customClaims.medicoQx && !!userRecord.customClaims.ciVigente){
-			sodium.ready.then(async () => {
-				const raw = sodium.crypto_sign_keypair();
-				const privkey = sodium.to_base64(Buffer.from(raw.privateKey), sodium.base64_variants.URLSAFE_NO_PADDING);
-				const pubkey = sodium.to_base64(Buffer.from(raw.publicKey), sodium.base64_variants.URLSAFE_NO_PADDING);
-			})			
-	        .then(async () => {
-	        	let prK = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('CREDENCIALES').set({
-	        		fechaClave: admin.firestore.FieldValue.serverTimestamp(),
-	        		clavePrivada: privkey,
-	        		clavePublica: pubkey,
-	        		passphrase: datos.passphrase
-	        	}, {merge: true});
-	        	let puK = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('PUBKEY').set({
-	        		fechaClave: admin.firestore.FieldValue.serverTimestamp(),
-	        		clavePublica: true
-	        	}, {merge: true});
-	        	return 'CLAVES OK';
-	        })
-	        .catch(function(e){
-	          console.log(e);
-	          return e;
-	        });
+			const priv = new Paseto.PrivateKey(new Paseto.V2());    
+			await priv.generate();    
+			const pub = await priv.public();                                                      
+
+			const prk = await priv.encode();
+			const puk = await pub.encode();
+			return await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('CREDENCIALES').set({
+				fechaClave: admin.firestore.FieldValue.serverTimestamp(),
+				clavePrivada: prk,
+				clavePublica: puk,
+				passphrase: datos.passphrase
+			}, {merge: true})
+			.then(async () => {
+				let puK = await firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('PUBKEY').set({
+					fechaClave: admin.firestore.FieldValue.serverTimestamp(),
+					clavePublica: true
+				}, {merge: true});
+			}).then(() => {
+				return 'CLAVES OK';
+			}).catch(e => {
+				console.log(e);
+				return 'ERROR AL GENERAR FIRMA';
+			});
+			
 		} else {
 			return 'CREDENCIALES INCOMPLETAS';
 		}
@@ -560,7 +556,8 @@ exports.anulaProd = functions.https.onCall(async (data, context) => {
 // FUNCIONES PARA USO DE CLAVEUNICA
 
 exports.claveUnica = functions.https.onCall(async (data, context) => {
-	return;
+	  	
+	 return;
 	// const redirectUri = await encodeURIComponent('https://test.e-receta.cl/claveunica');
 
 	// return Issuer.discover('https://accounts.claveunica.gob.cl/openid') // => Promise
