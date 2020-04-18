@@ -337,7 +337,6 @@ exports.creaReceta = functions.https.onCall(async (datos, context) => {
 			const idReceta = await crypto.randomBytes(20).toString('hex');
 
 			const message = JSON.stringify({i: idReceta, u: context.auth.uid, n: receta.nombrePte, e: receta.edadPte, d: receta.direccionPte, r: receta.rutPte, f: new Date().toLocaleDateString(), rp: receta.rpPte});
-
 			let key;
 
 			const signer = new Paseto.PrivateKey(new Paseto.V2());
@@ -386,71 +385,72 @@ exports.procesaQR = functions.https.onCall(async (datos, context) => {
 	return await admin.auth().getUser(context.auth.uid).then(async (userRecord) => {
 		if(!!userRecord.customClaims.medicoQx || !!userRecord.customClaims.farmacia){
 			const msg = datos.qr.text;
+			return msg;
 
-			let cred = await firestoreRef.collection('APP').doc('CRED').get() //aquí tendría que acceder a las claves según timestamp en msg
-			.then(async r => {
-				return await {pPh: r.data().passPhrase, firma: r.data().clavePrivada};
-			});
+			// let cred = await firestoreRef.collection('APP').doc('CRED').get() //aquí tendría que acceder a las claves según timestamp en msg
+			// .then(async r => {
+			// 	return await {pPh: r.data().passPhrase, firma: r.data().clavePrivada};
+			// });
 
-			let prKObj = (await pgp.key.readArmored(cred.firma)).keys[0];
-			await prKObj.decrypt(cred.pPh);
+			// let prKObj = (await pgp.key.readArmored(cred.firma)).keys[0];
+			// await prKObj.decrypt(cred.pPh);
 
-			const options = { 
-				message: (await pgp.message.readArmored(msg)), 
-				privateKeys: [prKObj]
-			};
+			// const options = { 
+			// 	message: (await pgp.message.readArmored(msg)), 
+			// 	privateKeys: [prKObj]
+			// };
 
-			let id, mjeFirmado, pubKR, pubKM, valid;
+			// let id, mjeFirmado, pubKR, pubKM, valid;
 
-			await pgp.decrypt(options)
-			.then( async plaintext => {
-			    let data = await plaintext.data;
-			    id = await data.split('-----', 1).toString().replace(/\n/g, '');
-			    mjeFirmado = await data.substring(data.indexOf('-----')).toString();
-			}).catch(e => console.log(e));
+			// await pgp.decrypt(options)
+			// .then( async plaintext => {
+			//     let data = await plaintext.data;
+			//     id = await data.split('-----', 1).toString().replace(/\n/g, '');
+			//     mjeFirmado = await data.substring(data.indexOf('-----')).toString();
+			// }).catch(e => console.log(e));
 
-			pubKM = await firestoreRef.collection('MEDICOS').doc(id).collection('DATOS').doc('CREDENCIALES').get()
-			.then(async r => {
-				if(r.exists){
-					return await r.data().clavePublica;
-				} else {
-					throw 'ERROR: no hay datos';
-				}
-			}).catch(e => console.log('ERROR pubK: ', e));
+			// pubKM = await firestoreRef.collection('MEDICOS').doc(id).collection('DATOS').doc('CREDENCIALES').get()
+			// .then(async r => {
+			// 	if(r.exists){
+			// 		return await r.data().clavePublica;
+			// 	} else {
+			// 		throw 'ERROR: no hay datos';
+			// 	}
+			// }).catch(e => console.log('ERROR pubK: ', e));
 
-			const optionsVerificaFirma = {
-			    message: (await pgp.cleartext.readArmored(mjeFirmado)),
-			    publicKeys: (await pgp.key.readArmored(pubKM)).keys
-			};
+			// const optionsVerificaFirma = {
+			//     message: (await pgp.cleartext.readArmored(mjeFirmado)),
+			//     publicKeys: (await pgp.key.readArmored(pubKM)).keys
+			// };
 
-			return pgp.verify(optionsVerificaFirma)
-			.then(async (verified) => {
-				valid = verified.signatures[0].valid; // true
-				const data = await JSON.parse(verified.data);
-				const i = data.i;
-				if (valid) {
-					let rp = await firestoreRef.collection('RECETAS').doc(i).set({
-						scan: admin.firestore.FieldValue.arrayUnion({
-							escaneadaPor: context.auth.uid,
-							nombre: context.auth.token.name || null,
-							email: context.auth.token.email || null,
-							fecha: new Date(),
-							idReceta: i
-						})
-					}, {merge: true});
-					let vendida = await firestoreRef.collection('RECETAS').doc(i).get()
-					.then(r => {
-						return r.data().vendida;
-					});
-					if(vendida){
-						return 'vendida';
-					} else {
-						return verified.data;
-					}
-				} else {
-					return 'no verificado';
-				}
-			}).catch(e => console.log(e));
+			// return pgp.verify(optionsVerificaFirma)
+			// .then(async (verified) => {
+			// 	valid = verified.signatures[0].valid; // true
+			// 	const data = await JSON.parse(verified.data);
+			// 	const i = data.i;
+			// 	if (valid) {
+			// 		let rp = await firestoreRef.collection('RECETAS').doc(i).set({
+			// 			scan: admin.firestore.FieldValue.arrayUnion({
+			// 				escaneadaPor: context.auth.uid,
+			// 				nombre: context.auth.token.name || null,
+			// 				email: context.auth.token.email || null,
+			// 				fecha: new Date(),
+			// 				idReceta: i
+			// 			})
+			// 		}, {merge: true});
+			// 		let vendida = await firestoreRef.collection('RECETAS').doc(i).get()
+			// 		.then(r => {
+			// 			return r.data().vendida;
+			// 		});
+			// 		if(vendida){
+			// 			return 'vendida';
+			// 		} else {
+			// 			return verified.data;
+			// 		}
+			// 	} else {
+			// 		return 'no verificado';
+			// 	}
+			// }).catch(e => console.log(e));
 		} else {
 			throw new functions.https.HttpsError(
 			  'wrong-credentials'
@@ -644,3 +644,5 @@ exports.appKey = functions.pubsub.schedule('every day 05:00').timeZone('America/
 // 		});
 // 	});
 // });
+
+//v2.local.ebQ-CHANkU8ovtQYFHGKn9e6AiwcLXlTq_fMU-IFvlRUvJROmne1VmwtRI_s4-vWNwlUbnGJp9UR9_-5RWnCm-vuM-1yxRYWQJkbF-G8pn4EBAnGV4TRfxsKhZpqZ4Gye-K49q3xhxhLdRWpgQtt4nEiwSx57Xj4iTsofQ3measwM1XnaD0t-B_ZlZ0yRSpb6J8vM0DA4-gzrsklbmmVVoEjGYl17seUstZhO-7IJMZkd8FdvNndq4ecy5QeCo2vsiIyZIvK5HCqACQzjWR8D9VkcGV-1YDGszMboKDVBwwbu7zrYlDR6x2xlH49GJJhxLcqB87g2fxmVynx8jmBZTRGUw7mlNCZdhWrN45WM_9FSEICClexTi38wCGc0R51ZUOT1UQjKMUU6pQTFu0PqHpS2bSUj4oM97ZMcBZlOWUW34e4TJJplDko27x_9BmhTScyQVxpJ2ef6L-Iskj53Gp1hWApi-yAU3IGYcMaEledEb0kRHlgf7yfqmYWf0rcJH3f77ay9wSXZd-f8L3tKfBAa_UqZedslKIsCCX6GyqJl0ECpD2Nu6wLDLM2wXKL6DJf8ss6FYWRQt6ywhbZY7irBNMQ64q6nDrODbcJ5OWg4M79Q3ZbJ-lPdEWgJFLQKrJgbYeUK9BXOaeP7KpnR7HuHXmbzcfsbn1Ngxya9DOJgBFzLEgEJIZYGhUryCBi4mW9w-b9bi5KmDiSz6Gx2DR7E-aUT37RcGGRmyMTUZ_rvJY4l-tSOJHYIgwidpK38obTXKGie4EXdhNbPdxmv5OEgmQt0B3xOIR12_p5oOhf8OYsMh5SCwSmkjYf9KBV1K_R3gnq7gQ6ndi82mJ3MQjU0XTqILmSJ26wwhnlibWT.MTU4NzI0NDg0MDUzOQ
