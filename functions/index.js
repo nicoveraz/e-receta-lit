@@ -1,7 +1,6 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const axios = require('axios');
-const pgp = require('openpgp');
 const puppeteer = require('puppeteer');
 const crypto = require('crypto');
 //const { Issuer } = require('openid-client');
@@ -384,73 +383,24 @@ exports.procesaQR = functions.https.onCall(async (datos, context) => {
 	}
 	return await admin.auth().getUser(context.auth.uid).then(async (userRecord) => {
 		if(!!userRecord.customClaims.medicoQx || !!userRecord.customClaims.farmacia){
-			const msg = datos.qr.text;
-			return msg;
+			const msg = await datos.qr.text;
+			const time = parseInt(Buffer.from([...msg.split('.')].pop(), 'base64').toString());
+			const fecha = new Date(time);
+			console.log(fecha);
+			//console.log(fecha);
 
-			// let cred = await firestoreRef.collection('APP').doc('CRED').get() //aquí tendría que acceder a las claves según timestamp en msg
-			// .then(async r => {
-			// 	return await {pPh: r.data().passPhrase, firma: r.data().clavePrivada};
-			// });
+			const cred = await firestoreRef.collection('APP').where('inicio', '<=', fecha).orderBy('inicio', 'desc').limit(1);
+			return await cred.get()
+			.then(async d => {
+				if(d.empty){
+					console.log('bip');
+				} else {
+					return await d.forEach(async k => {
+						console.log(k.data());
+					});
+				}		
+			});
 
-			// let prKObj = (await pgp.key.readArmored(cred.firma)).keys[0];
-			// await prKObj.decrypt(cred.pPh);
-
-			// const options = { 
-			// 	message: (await pgp.message.readArmored(msg)), 
-			// 	privateKeys: [prKObj]
-			// };
-
-			// let id, mjeFirmado, pubKR, pubKM, valid;
-
-			// await pgp.decrypt(options)
-			// .then( async plaintext => {
-			//     let data = await plaintext.data;
-			//     id = await data.split('-----', 1).toString().replace(/\n/g, '');
-			//     mjeFirmado = await data.substring(data.indexOf('-----')).toString();
-			// }).catch(e => console.log(e));
-
-			// pubKM = await firestoreRef.collection('MEDICOS').doc(id).collection('DATOS').doc('CREDENCIALES').get()
-			// .then(async r => {
-			// 	if(r.exists){
-			// 		return await r.data().clavePublica;
-			// 	} else {
-			// 		throw 'ERROR: no hay datos';
-			// 	}
-			// }).catch(e => console.log('ERROR pubK: ', e));
-
-			// const optionsVerificaFirma = {
-			//     message: (await pgp.cleartext.readArmored(mjeFirmado)),
-			//     publicKeys: (await pgp.key.readArmored(pubKM)).keys
-			// };
-
-			// return pgp.verify(optionsVerificaFirma)
-			// .then(async (verified) => {
-			// 	valid = verified.signatures[0].valid; // true
-			// 	const data = await JSON.parse(verified.data);
-			// 	const i = data.i;
-			// 	if (valid) {
-			// 		let rp = await firestoreRef.collection('RECETAS').doc(i).set({
-			// 			scan: admin.firestore.FieldValue.arrayUnion({
-			// 				escaneadaPor: context.auth.uid,
-			// 				nombre: context.auth.token.name || null,
-			// 				email: context.auth.token.email || null,
-			// 				fecha: new Date(),
-			// 				idReceta: i
-			// 			})
-			// 		}, {merge: true});
-			// 		let vendida = await firestoreRef.collection('RECETAS').doc(i).get()
-			// 		.then(r => {
-			// 			return r.data().vendida;
-			// 		});
-			// 		if(vendida){
-			// 			return 'vendida';
-			// 		} else {
-			// 			return verified.data;
-			// 		}
-			// 	} else {
-			// 		return 'no verificado';
-			// 	}
-			// }).catch(e => console.log(e));
 		} else {
 			throw new functions.https.HttpsError(
 			  'wrong-credentials'
@@ -553,7 +503,6 @@ exports.anulaProd = functions.https.onCall(async (data, context) => {
 
 exports.appKey = functions.pubsub.schedule('every day 05:00').timeZone('America/Santiago').onRun(async (context) => {
 	const sk = new Paseto.SymmetricKey(new Paseto.V2());
-	const timestamp = context.timestamp;
 	return sk.generate()
 	  .then(async () => {
 	    const encoder = sk.encode();
@@ -563,17 +512,17 @@ exports.appKey = functions.pubsub.schedule('every day 05:00').timeZone('America/
 	    	if(d.empty){
 	    		return firestoreRef.collection('APP').add({
 	    			credencial: encoder,
-	    			inicio: timestamp
+	    			inicio: admin.firestore.FieldValue.serverTimestamp()
 	    		});
 	    	} else {
 	    		return d.forEach(s => {
 	    			return firestoreRef.collection('APP').doc(s.id).set({
-	    				fin: timestamp
+	    				fin: admin.firestore.FieldValue.serverTimestamp()
 	    			}, {merge: true})
 	    			.then(() => {
 	    				return firestoreRef.collection('APP').add({
 	    					credencial: encoder,
-	    					inicio: timestamp
+	    					inicio: admin.firestore.FieldValue.serverTimestamp()
 	    				});
 	    			});
 	    		});
@@ -645,4 +594,68 @@ exports.appKey = functions.pubsub.schedule('every day 05:00').timeZone('America/
 // 	});
 // });
 
-//v2.local.ebQ-CHANkU8ovtQYFHGKn9e6AiwcLXlTq_fMU-IFvlRUvJROmne1VmwtRI_s4-vWNwlUbnGJp9UR9_-5RWnCm-vuM-1yxRYWQJkbF-G8pn4EBAnGV4TRfxsKhZpqZ4Gye-K49q3xhxhLdRWpgQtt4nEiwSx57Xj4iTsofQ3measwM1XnaD0t-B_ZlZ0yRSpb6J8vM0DA4-gzrsklbmmVVoEjGYl17seUstZhO-7IJMZkd8FdvNndq4ecy5QeCo2vsiIyZIvK5HCqACQzjWR8D9VkcGV-1YDGszMboKDVBwwbu7zrYlDR6x2xlH49GJJhxLcqB87g2fxmVynx8jmBZTRGUw7mlNCZdhWrN45WM_9FSEICClexTi38wCGc0R51ZUOT1UQjKMUU6pQTFu0PqHpS2bSUj4oM97ZMcBZlOWUW34e4TJJplDko27x_9BmhTScyQVxpJ2ef6L-Iskj53Gp1hWApi-yAU3IGYcMaEledEb0kRHlgf7yfqmYWf0rcJH3f77ay9wSXZd-f8L3tKfBAa_UqZedslKIsCCX6GyqJl0ECpD2Nu6wLDLM2wXKL6DJf8ss6FYWRQt6ywhbZY7irBNMQ64q6nDrODbcJ5OWg4M79Q3ZbJ-lPdEWgJFLQKrJgbYeUK9BXOaeP7KpnR7HuHXmbzcfsbn1Ngxya9DOJgBFzLEgEJIZYGhUryCBi4mW9w-b9bi5KmDiSz6Gx2DR7E-aUT37RcGGRmyMTUZ_rvJY4l-tSOJHYIgwidpK38obTXKGie4EXdhNbPdxmv5OEgmQt0B3xOIR12_p5oOhf8OYsMh5SCwSmkjYf9KBV1K_R3gnq7gQ6ndi82mJ3MQjU0XTqILmSJ26wwhnlibWT.MTU4NzI0NDg0MDUzOQ
+
+// let cred = await firestoreRef.collection('APP').doc('CRED').get() //aquí tendría que acceder a las claves según timestamp en msg
+// .then(async r => {
+// 	return await {pPh: r.data().passPhrase, firma: r.data().clavePrivada};
+// });
+
+// let prKObj = (await pgp.key.readArmored(cred.firma)).keys[0];
+// await prKObj.decrypt(cred.pPh);
+
+// const options = { 
+// 	message: (await pgp.message.readArmored(msg)), 
+// 	privateKeys: [prKObj]
+// };
+
+// let id, mjeFirmado, pubKR, pubKM, valid;
+
+// await pgp.decrypt(options)
+// .then( async plaintext => {
+//     let data = await plaintext.data;
+//     id = await data.split('-----', 1).toString().replace(/\n/g, '');
+//     mjeFirmado = await data.substring(data.indexOf('-----')).toString();
+// }).catch(e => console.log(e));
+
+// pubKM = await firestoreRef.collection('MEDICOS').doc(id).collection('DATOS').doc('CREDENCIALES').get()
+// .then(async r => {
+// 	if(r.exists){
+// 		return await r.data().clavePublica;
+// 	} else {
+// 		throw 'ERROR: no hay datos';
+// 	}
+// }).catch(e => console.log('ERROR pubK: ', e));
+
+// const optionsVerificaFirma = {
+//     message: (await pgp.cleartext.readArmored(mjeFirmado)),
+//     publicKeys: (await pgp.key.readArmored(pubKM)).keys
+// };
+
+// return pgp.verify(optionsVerificaFirma)
+// .then(async (verified) => {
+// 	valid = verified.signatures[0].valid; // true
+// 	const data = await JSON.parse(verified.data);
+// 	const i = data.i;
+// 	if (valid) {
+// 		let rp = await firestoreRef.collection('RECETAS').doc(i).set({
+// 			scan: admin.firestore.FieldValue.arrayUnion({
+// 				escaneadaPor: context.auth.uid,
+// 				nombre: context.auth.token.name || null,
+// 				email: context.auth.token.email || null,
+// 				fecha: new Date(),
+// 				idReceta: i
+// 			})
+// 		}, {merge: true});
+// 		let vendida = await firestoreRef.collection('RECETAS').doc(i).get()
+// 		.then(r => {
+// 			return r.data().vendida;
+// 		});
+// 		if(vendida){
+// 			return 'vendida';
+// 		} else {
+// 			return verified.data;
+// 		}
+// 	} else {
+// 		return 'no verificado';
+// 	}
+// }).catch(e => console.log(e));
