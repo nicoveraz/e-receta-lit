@@ -386,21 +386,77 @@ exports.procesaQR = functions.https.onCall(async (datos, context) => {
 			const msg = await datos.qr.text;
 			const time = parseInt(Buffer.from([...msg.split('.')].pop(), 'base64').toString());
 			const fecha = new Date(time);
-			console.log(fecha);
-			//console.log(fecha);
 
 			const cred = await firestoreRef.collection('APP').where('inicio', '<=', fecha).orderBy('inicio', 'desc').limit(1);
-			return await cred.get()
-			.then(async d => {
+			let clave;
+			let claveDelDia = await cred.get()
+			.then(d => {
 				if(d.empty){
-					console.log('bip');
+					throw new functions.https.HttpsError(
+					  'wrong-date'
+					);
 				} else {
-					return await d.forEach(async k => {
-						console.log(k.data());
+					return d.forEach(k => {
+						clave = k.data().credencial;
+						return;
 					});
 				}		
 			});
 
+			let pubKM;
+			let sk  = await new Paseto.SymmetricKey(new Paseto.V2());
+			let mensaje = await sk.base64(clave)
+			.then(async () => {
+				const encoder = sk.protocol();
+				return await encoder.decrypt(msg, sk);
+			})
+			.then(async m => {
+				const id = Buffer.from([...m.split('.')].pop(), 'base64').toString();
+				return await firestoreRef.collection('MEDICOS').doc(id).collection('DATOS').doc('CREDENCIALES').get()
+				.then(async r => {
+					if(r.exists){
+						pubKM = await r.data().clavePublica;
+						return m;
+					} else {
+						throw 'ERROR: no hay datos';
+					}
+				}).catch(e => console.log('ERROR pubK: ', e));				
+			});
+
+			let puk = new Paseto.PublicKey(new Paseto.V2());
+			return await puk.base64(pubKM)
+			.then(async () => {
+				const encoder = puk.protocol();
+				return encoder.verify(mensaje, puk)
+				.then(async res => {
+					console.log('res', res);
+					const i = JSON.parse(res).i;
+					let rp = await firestoreRef.collection('RECETAS').doc(i).set({
+						scan: admin.firestore.FieldValue.arrayUnion({
+							escaneadaPor: context.auth.uid,
+							nombre: context.auth.token.name || null,
+							email: context.auth.token.email || null,
+							fecha: new Date(),
+							idReceta: i
+						})
+					}, {merge: true});
+					let vendida = await firestoreRef.collection('RECETAS').doc(i).get()
+					.then(r => {
+						return r.data().vendida;
+					});
+					if(vendida){
+						return 'vendida';
+					} else {
+						return res;
+					}
+				}).catch(e => {
+					console.log(e);
+					return 'no verificado';
+				});
+			}).catch(e => {
+				console.log(e);
+				return 'no verificado';
+			});
 		} else {
 			throw new functions.https.HttpsError(
 			  'wrong-credentials'
@@ -516,14 +572,14 @@ exports.appKey = functions.pubsub.schedule('every day 05:00').timeZone('America/
 	    		});
 	    	} else {
 	    		return d.forEach(s => {
-	    			return firestoreRef.collection('APP').doc(s.id).set({
-	    				fin: admin.firestore.FieldValue.serverTimestamp()
-	    			}, {merge: true})
+	    			return firestoreRef.collection('APP').add({
+	    				credencial: encoder,
+	    				inicio: admin.firestore.FieldValue.serverTimestamp()
+	    			})
 	    			.then(() => {
-	    				return firestoreRef.collection('APP').add({
-	    					credencial: encoder,
-	    					inicio: admin.firestore.FieldValue.serverTimestamp()
-	    				});
+	    				return firestoreRef.collection('APP').doc(s.id).set({
+	    					fin: admin.firestore.FieldValue.serverTimestamp()
+	    				}, {merge: true});
 	    			});
 	    		});
 	    	}
