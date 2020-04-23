@@ -322,12 +322,12 @@ export class PageTwo extends LitElement {
             ${(this._medico && (this._user == this._receta.u))? html`
               <p colspan="2">Anular Receta</p>
               <vaadin-text-field colspan="2" label="Motivo Anulación" id="motivoAnula" .value="${this._motivoAnula}" @change="${e => this._motivoAnula = e.target.value}"></vaadin-text-field>
-              <vaadin-button ?disabled="${!this._key}" theme="primary error" @click="${() => this._anulaReceta()}">Anular Receta</vaadin-button>
+              <vaadin-button ?disabled="${!this.motivoAnula}" theme="primary error" @click="${() => this._anulaReceta()}">Anular Receta</vaadin-button>
               `:html``}
             ${this._farmacia? html`
               <p colspan="2">Anular Receta</p>
               <vaadin-text-field colspan="2" label="Motivo Anulación" id="motivoAnula" .value="${this._motivoAnula}" @change="${e => this._motivoAnula = e.target.value}"></vaadin-text-field>
-              <vaadin-button ?disabled="${!this._key}" ?disabled="${!this.motivoAnula}" theme="primary error" @click="${() => this._anulaReceta()}">Anular Receta</vaadin-button>
+              <vaadin-button ?disabled="${!this.motivoAnula}" theme="primary error" @click="${() => this._anulaReceta()}">Anular Receta</vaadin-button>
               `:html``}
           </form>
         </div>

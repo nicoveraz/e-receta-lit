@@ -3,7 +3,8 @@ const admin = require('firebase-admin');
 const axios = require('axios');
 const puppeteer = require('puppeteer');
 const crypto = require('crypto');
-//const { Issuer } = require('openid-client');
+const { Issuer } = require('openid-client');
+const { generators } = require('openid-client');
 const Paseto = require('paseto.js');
 
 const opts = {
@@ -37,7 +38,7 @@ exports.validaMed = functions.https.onCall( async (data, context) => {
   	const rut = data.rut.substring(0, data.rut.indexOf('-'));
 	const dataString = functions.config().supersalud.key;
 	const url = `https://api.superdesalud.gob.cl/prestadores/v1/prestadores/${rut}.json/?auth_key=${dataString}`;
-  return axios({method: 'get', url: url, responseType: 'json'})
+  	return axios({method: 'get', url: url, responseType: 'json'})
 	.then(async resultado =>{
 		let res = await resultado.data;
 		if(res.prestador.codigoBusqueda == 'Médico Cirujano'){
@@ -587,131 +588,27 @@ exports.appKey = functions.pubsub.schedule('every day 05:00').timeZone('America/
 	  });
 });
 
-//const { generators } = require('openid-client');
-// FUNCIONES PARA USO DE CLAVEUNICA
+// // FUNCIONES PARA USO DE CLAVEUNICA
 
-// exports.claveUnica = functions.https.onCall(async (data, context) => {
+exports.claveUnica = functions.https.onCall(async (data, context) => {
 	  	
-// 	 return;
-// 	// const redirectUri = await encodeURIComponent('https://test.e-receta.cl/claveunica');
+	 //return;
+	const redirectUri = await encodeURIComponent('https://test.e-receta.cl/claveunica');
 
-// 	// return Issuer.discover('https://accounts.claveunica.gob.cl/openid') // => Promise
-// 	//   .then(async (claveUnica) => {
-// 	//     const client = await new claveUnica.Client({
-// 	//     	client_id: '058258f80513405496e7cd88e2559579', //debería is a functions config()
-// 	//     	client_secret: '2a24f7ec0b554fa483da0b7f960ae2ff', //debería is a functions config()
-// 	//     	redirect_uris: ['https://test.e-receta.cl/claveunica'],
-// 	//     	response_types: ['code']
-// 	//     });
-// 	//     return client;
-// 	//   }).then(async c => {
-// 	//   	const state = generators.state();
-// 	//   	console.log(state);
-// 	//   	return await c.authorizationUrl({
-// 	//   	  scope: 'openid run name',
-// 	//   	  state: state
-// 	//   	});
-// 	//   });
-// });
-
-// exports.firmaMedico = functions.https.onCall(async (datos, context) => {
-// 	const message = JSON.stringify({rut: '14143467-5', rp: 'Ibuprofeno 400mg, 1 cp vo cada 8h por 5 días', p: 'Nicolás Vera Zúñiga'});
-// 	let key;
-
-// 	const priv = new Paseto.PrivateKey(new Paseto.V2());    
-// 	await priv.generate();    
-// 	const pub = await priv.public();                                                      
-
-// 	const prk = await priv.encode();
-// 	const puk = await pub.encode();
-
-// 	const signer = new Paseto.PrivateKey(new Paseto.V2());
-// 	return signer.base64(prk)
-// 	.then(() => {
-// 		const pr = signer.protocol();
-// 		return pr.sign(message, signer);
-// 	})
-// 	.then(async s => {
-// 		const cred = await firestoreRef.collection('APP').orderBy('inicio', 'desc').limit(1);
-// 		return await cred.get()
-// 		.then(async d => {
-// 			return await d.forEach(async k => {
-// 				key = await k.data().credencial;
-// 				return await key;
-// 			});		
-// 		}).then(async () =>{
-// 			let sk  = await new Paseto.SymmetricKey(new Paseto.V2());
-// 			return await sk.base64(key)
-// 			.then(async () => {
-// 				const encoder = sk.protocol();
-// 				return await encoder.encrypt(s, sk, `${Date.now()}`);
-// 			});
-// 		});
-// 	});
-// });
-
-
-// let cred = await firestoreRef.collection('APP').doc('CRED').get() //aquí tendría que acceder a las claves según timestamp en msg
-// .then(async r => {
-// 	return await {pPh: r.data().passPhrase, firma: r.data().clavePrivada};
-// });
-
-// let prKObj = (await pgp.key.readArmored(cred.firma)).keys[0];
-// await prKObj.decrypt(cred.pPh);
-
-// const options = { 
-// 	message: (await pgp.message.readArmored(msg)), 
-// 	privateKeys: [prKObj]
-// };
-
-// let id, mjeFirmado, pubKR, pubKM, valid;
-
-// await pgp.decrypt(options)
-// .then( async plaintext => {
-//     let data = await plaintext.data;
-//     id = await data.split('-----', 1).toString().replace(/\n/g, '');
-//     mjeFirmado = await data.substring(data.indexOf('-----')).toString();
-// }).catch(e => console.log(e));
-
-// pubKM = await firestoreRef.collection('MEDICOS').doc(id).collection('DATOS').doc('CREDENCIALES').get()
-// .then(async r => {
-// 	if(r.exists){
-// 		return await r.data().clavePublica;
-// 	} else {
-// 		throw 'ERROR: no hay datos';
-// 	}
-// }).catch(e => console.log('ERROR pubK: ', e));
-
-// const optionsVerificaFirma = {
-//     message: (await pgp.cleartext.readArmored(mjeFirmado)),
-//     publicKeys: (await pgp.key.readArmored(pubKM)).keys
-// };
-
-// return pgp.verify(optionsVerificaFirma)
-// .then(async (verified) => {
-// 	valid = verified.signatures[0].valid; // true
-// 	const data = await JSON.parse(verified.data);
-// 	const i = data.i;
-// 	if (valid) {
-// 		let rp = await firestoreRef.collection('RECETAS').doc(i).set({
-// 			scan: admin.firestore.FieldValue.arrayUnion({
-// 				escaneadaPor: context.auth.uid,
-// 				nombre: context.auth.token.name || null,
-// 				email: context.auth.token.email || null,
-// 				fecha: new Date(),
-// 				idReceta: i
-// 			})
-// 		}, {merge: true});
-// 		let vendida = await firestoreRef.collection('RECETAS').doc(i).get()
-// 		.then(r => {
-// 			return r.data().vendida;
-// 		});
-// 		if(vendida){
-// 			return 'vendida';
-// 		} else {
-// 			return verified.data;
-// 		}
-// 	} else {
-// 		return 'no verificado';
-// 	}
-// }).catch(e => console.log(e));
+	return Issuer.discover('https://accounts.claveunica.gob.cl/openid') // => Promise
+	  .then(async (claveUnica) => {
+	    const client = await new claveUnica.Client({
+	    	client_id: 'd88ee24b54b44fe4a2e14096db212f12', //debería is a functions config()
+	    	client_secret: '6e168f5281a54d22bb36e9ac00e9fe98', //debería is a functions config()
+	    	redirect_uris: ['https://test.e-receta.cl/claveunica'],
+	    	response_types: ['code']
+	    });
+	    return client;
+	  }).then(async c => {
+	  	const state = generators.state();
+	  	return await c.authorizationUrl({
+	  	  scope: 'openid run name email',
+	  	  state: state
+	  	});
+	  });
+});

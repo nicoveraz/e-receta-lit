@@ -281,7 +281,7 @@ export class PageOne extends LitElement {
   _ingresoClaveUnica(){
     const claveUnica = firebase.functions().httpsCallable('claveUnica');
     claveUnica().then(res => console.log(res));
-    // console.log('bip');
+    //console.log('bip');
   }
 
   _public(){
