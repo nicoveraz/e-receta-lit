@@ -177,6 +177,9 @@ export class PageOne extends LitElement {
       },
       _idRp: {
         type: String
+      },
+      _url: {
+        type: String
       }
     };
   }
@@ -202,19 +205,19 @@ export class PageOne extends LitElement {
     this._qr = '';
     this._motivoAnula = '';
     this._idRp = '';
+    this._url = document.URL;
   }
 
   render() {
     return html`
     <div id="eReceta">
-      <vaadin-button theme="primary" @click="${() => this._public()}">TEST</vaadin-button>  
       <mwc-icon-button ?disabled=${!this._user} icon="close" style="float: right" @click="${() => this._salir()}" aria-label="Salir"></mwc-icon-button>
       <vaadin-form-layout class="form" style="margin-top: 48px;">  
         <h5 colspan="2">Paso 1: Validar cuenta de correo electrónico ${this._user? okLogo : ''}</h5>
         <p colspan="2">(Puede ser cualquiera, con fines de prueba por ahora sólo Gmail. Único paso necesario por ahora para acceder al lector QR)</p>
         <div>
           <vaadin-button theme="primary" @click="${() => this._signIn()}" ?disabled=${this._user}>Ingresar con Google</vaadin-button>  
-          <vaadin-button @click="${() => this._ingresoClaveUnica()}">TEST CU</vaadin-button>
+          <vaadin-button @click="${() => this._ingresoClaveUnica()}">CLAVEUNICA</vaadin-button>
           ${this._email? html`
               <p style="margin-top: 10px;">Ingresó con el correo ${this._email}</p>
             `:html``}       
@@ -280,18 +283,10 @@ export class PageOne extends LitElement {
   }
   _ingresoClaveUnica(){
     const claveUnica = firebase.functions().httpsCallable('claveUnica');
-    claveUnica().then(res => console.log(res));
-    //console.log('bip');
-  }
-
-  _public(){
-    const firmaMedico = firebase.functions().httpsCallable('firmaMedico');
-    firmaMedico().then(r =>{ 
-      console.log(r);
-      this._qr = r.data;
+    claveUnica({uid: this._user}).then(res =>{ 
+      window.location.href = res.data;
     });
   }
-
 
   firstUpdated(){
     firebase.auth().onAuthStateChanged((user) => {
@@ -313,7 +308,18 @@ export class PageOne extends LitElement {
             this._key = !!data.clavePublica;
           }         
         });
-
+        if(this._url.includes('?code=')){
+          const url = new URL(this._url);
+          const query = url.search;
+          const params = new URLSearchParams(query);
+          const state = params.get('state');
+          const code = params.get('code');
+          const pasoDosCU = firebase.functions().httpsCallable('pasoDosCU');
+          pasoDosCU({uid: this._user, code: code, state: state})
+          .then(r => {
+            console.log(r);
+          });
+        }
       }
     });
     this.shadowRoot.querySelectorAll('.form')
@@ -331,7 +337,7 @@ export class PageOne extends LitElement {
     } 
     if(this._captcha){
       this._spinner = false;
-    }  
+    } 
   }
   _borraReceta(){
     this.shadowRoot.querySelector('#nombrePte').value = '';
