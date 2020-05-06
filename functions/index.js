@@ -602,7 +602,11 @@ exports.claveUnica = functions.https.onCall(async (data, context) => {
 		  'wrong-user'
 		);
 	}
-	//const redirectUri = await encodeURIComponent('https://test.e-receta.cl/claveunica');
+
+	const state = generators.state();
+	// firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('CREDENCIALES').set({
+	// 	state: state
+	// }, {merge: true});
 
 	return Issuer.discover('https://accounts.claveunica.gob.cl/openid')
 	  .then(async (claveUnica) => {
@@ -614,19 +618,14 @@ exports.claveUnica = functions.https.onCall(async (data, context) => {
 	    });
 	    return client;
 	  }).then(async c => {
-	  	const state = generators.state();
-	  	firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('CREDENCIALES').set({
-	  		state: state
-	  	}, {merge: true});
 	  	return await c.authorizationUrl({
-	  	  scope: 'openid run name email',
+	  	  scope: 'openid run',
 	  	  state: state
 	  	});
 	  });
 });
 
 exports.pasoDosCU = functions.https.onCall(async (data, context) => {
-	console.log('data', data);
 	if (!(context.auth && context.auth.token)) {
 	  throw new functions.https.HttpsError(
 	    'permission-denied'
@@ -637,18 +636,21 @@ exports.pasoDosCU = functions.https.onCall(async (data, context) => {
 		  'wrong-user'
 		);
 	}
-	const getState = firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('CREDENCIALES');
-	getState.get().then(d => {
-		if(data.state != d.data().state){
-			throw new functions.https.HttpsError(
-			  'error-credenciales'
-			);
-		}
-	});
-	return axios({
+	// const getState = firestoreRef.collection('MEDICOS').doc(context.auth.uid).collection('DATOS').doc('CREDENCIALES');
+	// getState.get().then(d => {
+	// 	if(data.state != d.data().state){
+	// 		throw new functions.https.HttpsError(
+	// 		  'error-credenciales'
+	// 		);
+	// 	}
+	// });
+	return axios
+	({
 		method: 'post',
 		url: 'https://accounts.claveunica.gob.cl/openid/token/',
-		headers: {"content-type": "application/x-www-form-urlencoded; charset=UTF-8"},
+		headers: {
+			"content-type": "application/x-www-form-urlencoded; charset=UTF-8"
+		},
 		data:  querystring.stringify({
 		 	client_id: 'd88ee24b54b44fe4a2e14096db212f12',
 		 	client_secret: '6e168f5281a54d22bb36e9ac00e9fe98',
@@ -658,15 +660,20 @@ exports.pasoDosCU = functions.https.onCall(async (data, context) => {
 		 	state: data.state
 		})
 	}).then(r =>{
-		console.log('r', r.data);
-		return axios({
-			method: 'post',
-			url: 'https://www.claveunica.gob.cl/openid/userinfo/',
-			headers: {'Authorization': `Bearer ${r.data.access_token}`}
-		})
-		.then(u => {
-			console.log('u', u);
-			return u;
-		}).catch(e => console.log(e));
-	}).catch(e => console.log(e));
+		return Issuer.discover('https://accounts.claveunica.gob.cl/openid')
+		  .then(async (claveUnica) => {
+		    const client = await new claveUnica.Client({
+		    	client_id: 'd88ee24b54b44fe4a2e14096db212f12', //debería is a functions config()
+		    	client_secret: '6e168f5281a54d22bb36e9ac00e9fe98', //debería is a functions config()
+		    	redirect_uris: ['https://test.e-receta.cl/claveunica'],
+		    	response_types: ['code']
+		    });
+		    return client;
+		  }).then(async c => {
+		  	return await c.userinfo(r.data.access_token);
+		  });		
+	}).catch(e => {
+		console.log('error axios', e);
+		return e;
+	});
 });

@@ -15,11 +15,10 @@
     "axios": "^0.19.2",
     "firebase-admin": "^8.11.0",
     "firebase-functions": "^3.6.1",
-    "openid-client": "^3.14.2",
+    "openid-client": "^3.15.0",
     "paseto.js": "^0.1.6",
     "puppeteer": "^2.1.1",
-    "querystring": "^0.2.0",
-    "request": "^2.88.2"
+    "querystring": "^0.2.0"
   },
   "devDependencies": {
     "firebase-functions-test": "^0.1.6"

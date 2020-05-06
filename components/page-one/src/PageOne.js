@@ -110,6 +110,17 @@ export class PageOne extends LitElement {
         --dile-spinner-modal-background-color: rgba(0,0,0,.5);
         --dile-spinner-modal-box-color: transparent;
       }
+      .claveunica {
+        background: url(images/btn_claveunica_202px.png);
+        height: 36px;
+        width: 130px;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: cover;
+      }
+      .claveunica[disabled]{
+        opacity: .6;
+      }
     `;
   }
 
@@ -216,8 +227,7 @@ export class PageOne extends LitElement {
         <h5 colspan="2">Paso 1: Validar cuenta de correo electrónico ${this._user? okLogo : ''}</h5>
         <p colspan="2">(Puede ser cualquiera, con fines de prueba por ahora sólo Gmail. Único paso necesario por ahora para acceder al lector QR)</p>
         <div>
-          <vaadin-button theme="primary" @click="${() => this._signIn()}" ?disabled=${this._user}>Ingresar con Google</vaadin-button>  
-          <vaadin-button @click="${() => this._ingresoClaveUnica()}">CLAVEUNICA</vaadin-button>
+          <vaadin-button theme="primary" @click="${() => this._signIn()}" ?disabled=${this._user}>Ingresar con Google</vaadin-button>
           ${this._email? html`
               <p style="margin-top: 10px;">Ingresó con el correo ${this._email}</p>
             `:html``}       
@@ -226,19 +236,11 @@ export class PageOne extends LitElement {
       <vaadin-form-layout class="form">
         <h5 colspan="2" style="color: ${this._user? 'black':'rgba(0,0,0,.3)'}">Paso 2: Validar Médico ${this._generaClave? okLogo : ''}</h5>
         <p colspan="2" style="color: ${this._user? 'black':'rgba(0,0,0,.3)'}">(Sólo una vez: ingresar RUT y número de serie, con ello se obtiene registro Superintendencia de Salud, para validar el RUT es necesario completar, en sólo 1 intento, el texto del CAPTCHA)</p>
-        <vaadin-text-field clear-button-visible id="rutDoc" error-message="Rut inválido" label="RUT" ?disabled=${!this._user || this._generaClave || this._captEnviado} .value="${this._rutDoc}" @input="${(e) => {e.target.value = `${e.target.value === '-'? e.target.value.replace('-', '') : e.target.value.split('').pop() != '-'? e.target.value.replace('-','').slice(0, -1) + '-' + e.target.value.slice(-1): e.target.value.replace('-','')}`; this._rutDoc = e.target.value; this._validaRut(e.target.value)}}"></vaadin-text-field>      
-        <div>
-          <vaadin-text-field class="texto-captcha" label="Nº de Serie o Documento (sin puntos)" .value="${this._numSerie}" ?disabled=${!this._rutValido  || this._generaClave || this._captEnviado} @input="${e => this._numSerie = e.target.value}"></vaadin-text-field>      
-          <vaadin-button ?disabled="${!this._rutDoc || !this._numSerie || this._generaClave || this._captEnviado}" @click="${(e) => this._validaMed(this._user, this._rutDoc, this._numSerie)}" theme="primary">Validar</vaadin-button><br>            
+        <div colspan="2">
+          <vaadin-button class="claveunica" ?disabled="${!this._user}" @click="${() => this._ingresoClaveUnica()}"></vaadin-button>
         </div>
-        <div class="imagen">
-          <img ?hidden=${!this._captcha} src="data:image/png;base64,${this._captcha}">
-        </div>
-        <div>
-          <vaadin-text-field label="Texto CAPTCHA" ?invalid="${(this._captcha && !this._txtCaptcha)}" error-message="Ingresar CAPTCHA (Sólo 1 intento)" class="texto-captcha" .value="${this._txtCaptcha}" @input="${e => this._txtCaptcha = e.target.value}" ?disabled=${!this._captcha}></vaadin-text-field>       
-          <vaadin-button theme="primary" ?disabled=${!this._captcha} @click="${() => {this._enviaCaptcha(this._txtCaptcha); this._captEnviado = true; this._spinner = true;}}">Enviar</vaadin-button>            
-        </div>
-        <vaadin-text-field label="Estado Cédula Identidad" readonly .value="${(this._serieValida === true)? 'Cédula de Identidad Vigente': (this._serieValida === false)? 'No Vigente' : (this._serieValida === 'ERROR')? 'Error' : 'Pendiente'}" ?disabled=${!this._user}></vaadin-text-field>       
+        <vaadin-text-field readonly clear-button-visible id="rutDoc" error-message="Rut inválido" label="RUT" ?disabled=${!this._user || this._generaClave || this._captEnviado} .value="${this._rutDoc}" @input="${(e) => {e.target.value = `${e.target.value === '-'? e.target.value.replace('-', '') : e.target.value.split('').pop() != '-'? e.target.value.replace('-','').slice(0, -1) + '-' + e.target.value.slice(-1): e.target.value.replace('-','')}`; this._rutDoc = e.target.value; this._validaRut(e.target.value)}}"></vaadin-text-field>      
+
         <vaadin-text-field label="Registro Superintendencia" .value="${(this._medValido === true)? 'Médico Cirujano': (this._medValido === true)? 'No Registrado' : 'Pendiente'}" readonly ?disabled=${!this._user}></vaadin-text-field><br>      
         <vaadin-text-field colspan="2" label="Nombre" .value="${this._nombreMed}" readonly ?disabled=${!this._user}></vaadin-text-field>       
       </vaadin-form-layout>
@@ -284,6 +286,11 @@ export class PageOne extends LitElement {
   _ingresoClaveUnica(){
     const claveUnica = firebase.functions().httpsCallable('claveUnica');
     claveUnica({uid: this._user}).then(res =>{ 
+      const url = new URL(res.data);
+      const query = url.search;
+      const params = new URLSearchParams(query);
+      const state = params.get('state');
+      sessionStorage.setItem('state', state);
       window.location.href = res.data;
     });
   }
@@ -314,10 +321,17 @@ export class PageOne extends LitElement {
           const params = new URLSearchParams(query);
           const state = params.get('state');
           const code = params.get('code');
+
+          if(state !== sessionStorage.getItem('state')){
+            console.log('Error');
+            return;
+          }
+
           const pasoDosCU = firebase.functions().httpsCallable('pasoDosCU');
           pasoDosCU({uid: this._user, code: code, state: state})
           .then(r => {
             console.log(r);
+            console.log(`RUT: ${r.data.RolUnico.numero}-${r.data.RolUnico.DV}`);
           });
         }
       }
@@ -610,3 +624,17 @@ export class PageOne extends LitElement {
     
   }
 }
+
+
+// <div>
+//   <vaadin-text-field class="texto-captcha" label="Nº de Serie o Documento (sin puntos)" .value="${this._numSerie}" ?disabled=${!this._rutValido  || this._generaClave || this._captEnviado} @input="${e => this._numSerie = e.target.value}"></vaadin-text-field>      
+//   <vaadin-button ?disabled="${!this._rutDoc || !this._numSerie || this._generaClave || this._captEnviado}" @click="${(e) => this._validaMed(this._user, this._rutDoc, this._numSerie)}" theme="primary">Validar</vaadin-button><br>            
+// </div>
+// <div class="imagen">
+//   <img ?hidden=${!this._captcha} src="data:image/png;base64,${this._captcha}">
+// </div>
+// <div>
+//   <vaadin-text-field label="Texto CAPTCHA" ?invalid="${(this._captcha && !this._txtCaptcha)}" error-message="Ingresar CAPTCHA (Sólo 1 intento)" class="texto-captcha" .value="${this._txtCaptcha}" @input="${e => this._txtCaptcha = e.target.value}" ?disabled=${!this._captcha}></vaadin-text-field>       
+//   <vaadin-button theme="primary" ?disabled=${!this._captcha} @click="${() => {this._enviaCaptcha(this._txtCaptcha); this._captEnviado = true; this._spinner = true;}}">Enviar</vaadin-button>            
+// </div>
+// <vaadin-text-field label="Estado Cédula Identidad" readonly .value="${(this._serieValida === true)? 'Cédula de Identidad Vigente': (this._serieValida === false)? 'No Vigente' : (this._serieValida === 'ERROR')? 'Error' : 'Pendiente'}" ?disabled=${!this._user}></vaadin-text-field>       
