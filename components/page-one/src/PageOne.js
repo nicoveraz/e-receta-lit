@@ -236,9 +236,11 @@ export class PageOne extends LitElement {
       <vaadin-form-layout class="form">
         <h5 colspan="2" style="color: ${this._user? 'black':'rgba(0,0,0,.3)'}">Paso 2: Validar Médico ${this._generaClave? okLogo : ''}</h5>
         <p colspan="2" style="color: ${this._user? 'black':'rgba(0,0,0,.3)'}">(Sólo una vez: ingresar RUT y número de serie, con ello se obtiene registro Superintendencia de Salud, para validar el RUT es necesario completar, en sólo 1 intento, el texto del CAPTCHA)</p>
-        <div colspan="2">
-          <vaadin-button class="claveunica" ?disabled="${!this._user}" @click="${() => this._ingresoClaveUnica()}"></vaadin-button>
-        </div>
+        ${(this._user && this._user == 'bip')? html`
+          <div colspan="2">
+            <vaadin-button class="claveunica" ?disabled="${!this._user}" @click="${() => this._ingresoClaveUnica()}"></vaadin-button>
+          </div>
+        `:html``}
         <vaadin-text-field readonly clear-button-visible id="rutDoc" error-message="Rut inválido" label="RUT" ?disabled=${!this._user || this._generaClave || this._captEnviado} .value="${this._rutDoc}" @input="${(e) => {e.target.value = `${e.target.value === '-'? e.target.value.replace('-', '') : e.target.value.split('').pop() != '-'? e.target.value.replace('-','').slice(0, -1) + '-' + e.target.value.slice(-1): e.target.value.replace('-','')}`; this._rutDoc = e.target.value; this._validaRut(e.target.value)}}"></vaadin-text-field>      
 
         <vaadin-text-field label="Registro Superintendencia" .value="${(this._medValido === true)? 'Médico Cirujano': (this._medValido === true)? 'No Registrado' : 'Pendiente'}" readonly ?disabled=${!this._user}></vaadin-text-field><br>      
@@ -284,15 +286,16 @@ export class PageOne extends LitElement {
     `;
   }
   _ingresoClaveUnica(){
-    const claveUnica = firebase.functions().httpsCallable('claveUnica');
-    claveUnica({uid: this._user}).then(res =>{ 
-      const url = new URL(res.data);
-      const query = url.search;
-      const params = new URLSearchParams(query);
-      const state = params.get('state');
-      sessionStorage.setItem('state', state);
-      window.location.href = res.data;
-    });
+    return;
+    // const claveUnica = firebase.functions().httpsCallable('claveUnica');
+    // claveUnica({uid: this._user}).then(res =>{ 
+    //   const url = new URL(res.data);
+    //   const query = url.search;
+    //   const params = new URLSearchParams(query);
+    //   const state = params.get('state');
+    //   sessionStorage.setItem('state', state);
+    //   window.location.href = res.data;
+    // });
   }
 
   firstUpdated(){
