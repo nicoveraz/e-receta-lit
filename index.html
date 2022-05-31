@@ -69,6 +69,13 @@
       }
     });
   </script>
+  <script>
+    if (window.trustedTypes && trustedTypes.createPolicy) { // Feature testing
+      trustedTypes.createPolicy('default', {
+        createHTML: (string, sink) => DOMPurify.sanitize(string, {RETURN_TRUSTED_TYPE: true})
+      });
+    }
+  </script>
   <title>eReceta NewtriLabs</title>
 </head>
 <body>
