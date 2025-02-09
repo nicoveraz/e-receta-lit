@@ -1,4 +1,4 @@
-# Experimento de NewtriLabs
+# Experimental
 
 ## QR que incorpora receta encriptada y firma del médico con esquema llave pública/privada de 256bits
 
